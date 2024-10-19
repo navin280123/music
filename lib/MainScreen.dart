@@ -4,7 +4,8 @@ import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final List<dynamic> audioFiles; // List of audio files passed to the MainScreen
+  MainScreen({super.key, required this.audioFiles});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -13,12 +14,18 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // List of widgets corresponding to the tabs
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const PlayScreen(),
-    const ProfileScreen(),
-  ];
+  // Create a list of pages, passing the audioFiles to the HomeScreen
+  late List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeScreen(audioFiles: widget.audioFiles), // Pass the audio files to HomeScreen
+      const PlayScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   // Handle tab change
   void _onTabTapped(int index) {
@@ -34,7 +41,10 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text("Play Music"),
       ),
-      body: _pages[_currentIndex], // Display the selected tab's screen
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ), // Display the selected tab's screen
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex, // The currently selected tab
         onTap: _onTabTapped, // Handle tab tap
@@ -56,8 +66,3 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
-// Home tab content
-
-
-

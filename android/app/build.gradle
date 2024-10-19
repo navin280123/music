@@ -20,20 +20,19 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.music"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 31 // Set this to the appropriate version, e.g., 31 for Android 12
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Add this line to request legacy external storage
+        // Remove this if you want to fully comply with scoped storage rules
+        // requestLegacyExternalStorage = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
         }
     }
@@ -41,4 +40,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Add your dependencies here if needed
+dependencies {
+    // Example dependency for permission handling
+    implementation 'com.google.android.material:material:1.4.0' // Update to the latest version
 }
