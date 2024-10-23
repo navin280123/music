@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'Music',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void startTimers() {
     // Ensure the splash screen stays for at least 4.5 seconds
-    Timer(const Duration(milliseconds: 4500), () {
+    Timer(const Duration(milliseconds: 4700), () {
       setState(() {
         minSplashTimeElapsed = true;
       });
@@ -139,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(
         child: loading
             ? Lottie.asset(
-                'assets/music.json', // Lottie animation for loading
+                'assets/music.json', 
                 width: 200,
                 height: 200,
                 fit: BoxFit.cover,
@@ -152,3 +152,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+    
