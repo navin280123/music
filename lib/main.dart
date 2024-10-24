@@ -120,7 +120,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   // Helper function to get mp3 files from a directory
-  List<FileSystemEntity> _getFilesFromDirectory(Directory dir, String extension) {
+  List<FileSystemEntity> _getFilesFromDirectory(
+      Directory dir, String extension) {
     List<FileSystemEntity> files = [];
     try {
       files = dir.listSync(recursive: true).where((file) {
@@ -139,7 +140,7 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(
         child: loading
             ? Lottie.asset(
-                'assets/music.json', 
+                'assets/music.json',
                 width: 200,
                 height: 200,
                 fit: BoxFit.cover,
@@ -152,4 +153,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-    

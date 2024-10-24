@@ -168,19 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // First Row: Song image and song title
                 Row(
                   children: [
-                    // ClipOval(
-                    //   child: Image.asset(
-                    //     'assets/music.png',
-                    //     width: 50,
-                    //     height: 50,
-                    //     fit: BoxFit.cover,
-                    //   ),
-                    // ),
                     const SizedBox(
-                        width: 10), // Add spacing between image and text
+                        width: 10), 
                     Expanded(
                       child: Text(
                         fileName,
