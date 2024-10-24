@@ -16,7 +16,6 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late List<Widget> _pages;
   late List<dynamic> _filteredAudioFiles;
-  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -37,17 +36,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _filterAudioFiles(String query) {
-    setState(() {
-      _filteredAudioFiles = widget.audioFiles
-          .where((audioFile) =>
-              audioFile['title'].toLowerCase().contains(query.toLowerCase()))
-          .toList();
-      _pages[0] = HomeScreen(
-          audioFiles:
-              _filteredAudioFiles); // Update HomeScreen with filtered list
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,26 +46,6 @@ class _MainScreenState extends State<MainScreen> {
           "Play Music",
           style: TextStyle(color: Colors.white), // Set text color
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: SizedBox(
-              width: 200,
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                onChanged:
-                    _filterAudioFiles, // Call _filterAudioFiles on text change
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
