@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 : ListView.builder(
                     padding: EdgeInsets.only(
-                        bottom: _currentlyPlayingIndex != null ? 150.0 : 0.0),
+                        bottom: _currentlyPlayingIndex != null ? 80.0 : 0.0),
                     itemCount: widget.audioFiles.length,
                     itemBuilder: (context, index) {
                       return _buildMusicTile(widget.audioFiles[index], index);
@@ -215,39 +215,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 6),
-                // Time indicators (current position and total duration)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(_position),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    // Third Row: Slider for progress and time indicators
-                    Slider.adaptive(
-                      activeColor: Colors.white,
-                      inactiveColor: Colors.grey,
-                      min: 0.0,
-                      max: _duration.inSeconds.toDouble(),
-                      value: _position.inSeconds
-                          .toDouble()
-                          .clamp(0.0, _duration.inSeconds.toDouble()),
-                      onChanged: (double value) async {
-                        final newPosition = Duration(seconds: value.toInt());
-                        await _audioPlayer.seek(newPosition);
-                        setState(() {
-                          _position = newPosition;
-                        });
-                      },
-                    ),
-                    Text(
-                      _formatDuration(_duration),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -256,12 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(duration.inMinutes);
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$minutes:$seconds';
-  }
+ 
 
   void _playNext() async {
     if (_currentlyPlayingIndex != null &&

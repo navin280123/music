@@ -4,8 +4,7 @@ import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 
 class MainScreen extends StatefulWidget {
-  final List<dynamic>
-      audioFiles; // List of audio files passed to the MainScreen
+  final List<dynamic> audioFiles; // List of audio files passed to the MainScreen
   MainScreen({super.key, required this.audioFiles});
 
   @override
@@ -16,15 +15,14 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late List<Widget> _pages;
   late List<dynamic> _filteredAudioFiles;
+  Duration _currentSongDuration = Duration.zero; // Variable to maintain the current playing song's duration
 
   @override
   void initState() {
     super.initState();
     _filteredAudioFiles = widget.audioFiles;
     _pages = [
-      HomeScreen(
-          audioFiles:
-              _filteredAudioFiles), // Pass the audio files to HomeScreen
+      HomeScreen(audioFiles: _filteredAudioFiles), // Pass the audio files to HomeScreen
       const PlayScreen(),
       const ProfileScreen(),
     ];
@@ -35,7 +33,6 @@ class _MainScreenState extends State<MainScreen> {
       _currentIndex = index;
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +59,7 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex, // The currently selected tab
         onTap: _onTabTapped, // Handle tab tap
         selectedItemColor: Colors.white, // Set selected item color
-        unselectedItemColor:
-            const Color.fromARGB(255, 35, 35, 35), // Set unselected item color
+        unselectedItemColor: const Color.fromARGB(255, 35, 35, 35), // Set unselected item color
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
