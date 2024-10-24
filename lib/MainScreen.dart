@@ -38,28 +38,34 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Play Music"),
+        backgroundColor: Colors.deepPurple, // Set app bar background color
+        title: const Text(
+          "Play Music",
+          style: TextStyle(color: Colors.white), // Set text color
+        ),
       ),
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ), // Display the selected tab's screen
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.deepPurple, // Set background color
         currentIndex: _currentIndex, // The currently selected tab
         onTap: _onTabTapped, // Handle tab tap
+        selectedItemColor: Colors.white, // Set selected item color
+        unselectedItemColor: const Color.fromARGB(255, 35, 35, 35), // Set unselected item color
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+        icon: Icon(Icons.home),
+        label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.play_circle_fill),
-            label: 'Play',
+        icon: Icon(Icons.play_circle_fill),
+        label: 'Play',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+        icon: Icon(Icons.person),
+        label: 'Profile',
           ),
         ],
       ),
