@@ -74,6 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
             color: isPlayingCurrent ? Colors.white : Colors.white70,
           ),
         ),
+        onTap: () {
+          widget.onPlayOrPause(index, file.path);
+          setState(() {
+            showBottomSheet = true;
+          });
+        },
         trailing: IconButton(
           icon: Icon(isPlayingCurrent
               ? Icons.pause_circle_filled

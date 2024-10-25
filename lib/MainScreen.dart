@@ -91,7 +91,15 @@ class _MainScreenState extends State<MainScreen> {
             position: _position,
             onPlayOrPause: _playOrPause,
           ),
-          ProfileScreen(audioFiles: widget.audioFiles, audioPlayer: audioPlayer),
+          ProfileScreen(
+            audioFiles: widget.audioFiles,
+            audioPlayer: audioPlayer,
+            currentlyPlayingIndex: _currentlyPlayingIndex,
+            isPlaying: _isPlaying,
+            duration: _duration,
+            position: _position,
+            onPlayOrPause: _playOrPause,
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
