@@ -201,9 +201,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _formatDuration(Duration d) {
-    String minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    String seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
+   String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String hours = twoDigits(duration.inHours);
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+
+    return duration.inHours > 0
+        ? "$hours:$minutes:$seconds"
+        : "$minutes:$seconds";
   }
 }
