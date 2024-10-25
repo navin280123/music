@@ -4,255 +4,206 @@ import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
+  final AudioPlayer audioPlayer;
+  final int? currentlyPlayingIndex;
+  final Duration duration;
+  final Duration position;
+  final bool isPlaying;
+  final Function(int, String) onPlayOrPause;
 
-  const HomeScreen({super.key, required this.audioFiles});
+  const HomeScreen({
+    super.key,
+    required this.audioFiles,
+    required this.audioPlayer,
+    required this.currentlyPlayingIndex,
+    required this.duration,
+    required this.position,
+    required this.isPlaying,
+    required this.onPlayOrPause,
+  });
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  AudioPlayer _audioPlayer = AudioPlayer();
-  int? _currentlyPlayingIndex;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer.onDurationChanged.listen((Duration duration) {
-      setState(() {
-        _duration = duration;
-      });
-    });
-    _audioPlayer.onPositionChanged.listen((Duration position) {
-      setState(() {
-        _position = position;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
+  bool showBottomSheet = true;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            color: Colors.deepPurple,
-            child: widget.audioFiles.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No music files found',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.only(
-                        bottom: _currentlyPlayingIndex != null ? 80.0 : 0.0),
-                    itemCount: widget.audioFiles.length,
-                    itemBuilder: (context, index) {
-                      return _buildMusicTile(widget.audioFiles[index], index);
-                    },
-                  ),
-          ),
-          if (_currentlyPlayingIndex != null)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildMusicControlCard(),
-            ),
-        ],
+      backgroundColor: Colors.deepPurple, // Set the background color here
+      body: ListView.builder(
+        padding: EdgeInsets.only(
+            bottom: widget.currentlyPlayingIndex != null ? 70.0 : 0.0),
+        itemCount: widget.audioFiles.length,
+        itemBuilder: (context, index) {
+          return _buildMusicTile(widget.audioFiles[index], index);
+        },
       ),
+      bottomSheet: widget.currentlyPlayingIndex != null && showBottomSheet
+          ? _buildNowPlayingBar()
+          : null,
     );
   }
 
   Widget _buildMusicTile(FileSystemEntity file, int index) {
     String fileName = file.path.split('/').last;
-    ImageProvider image = const AssetImage('assets/music.png');
-    bool isPlaying = _currentlyPlayingIndex == index;
+    bool isPlayingCurrent =
+        widget.currentlyPlayingIndex == index && widget.isPlaying;
 
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      color: Colors.deepPurple[300],
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      elevation: 4.0,
+      color: Colors.deepPurple[400],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
       child: ListTile(
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-        leading: ClipOval(
-          child: Image(image: image, width: 50, height: 50, fit: BoxFit.cover),
+            const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        leading: Icon(
+          Icons.music_note,
+          color: isPlayingCurrent ? Colors.pinkAccent : Colors.white70,
+          size: 40.0,
         ),
         title: Text(
           fileName,
-          style: const TextStyle(
+          overflow:
+              TextOverflow.ellipsis, // Ensure filename is displayed in one line
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.white,
+            color: isPlayingCurrent ? Colors.white : Colors.white70,
           ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
         ),
-        onTap: () => _playOrPause(index, file.path, isPlaying),
         trailing: IconButton(
-          icon: Icon(
-            isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-            color: Colors.deepPurple,
-          ),
-          iconSize: 30,
-          onPressed: () => _playOrPause(index, file.path, isPlaying),
+          icon: Icon(isPlayingCurrent
+              ? Icons.pause_circle_filled
+              : Icons.play_circle_fill),
+          color: isPlayingCurrent ? Colors.lightBlueAccent : Colors.white70,
+          iconSize: 36.0,
+          onPressed: () {
+            widget.onPlayOrPause(index, file.path);
+            setState(() {
+              showBottomSheet = true;
+            });
+          },
         ),
       ),
     );
   }
 
-  void _playOrPause(int index, String path, bool isPlaying) async {
-    if (isPlaying) {
-      await _audioPlayer.pause();
-      setState(() {
-        _currentlyPlayingIndex = null;
-        _isPlaying = false;
-      });
-    } else {
-      if (_currentlyPlayingIndex != null) {
-        await _audioPlayer.stop();
-      }
-      await _audioPlayer.play(DeviceFileSource(path));
-      setState(() {
-        _currentlyPlayingIndex = index;
-        _isPlaying = true;
-      });
-    }
-  }
-
-  Widget _buildMusicControlCard() {
-    String fileName =
-        widget.audioFiles[_currentlyPlayingIndex!].path.split('/').last;
+  Widget _buildNowPlayingBar() {
+    String currentSong =
+        widget.audioFiles[widget.currentlyPlayingIndex!].path.split('/').last;
 
     return GestureDetector(
       onVerticalDragEnd: (details) {
-        if (details.velocity.pixelsPerSecond.dy > 0) {
-          _stopPlayback(); // Stop the playback when swiped down
+        if (details.primaryVelocity! > 0) {
+          // Swiped down, hide the bottom sheet
+          onDownSwipe();
         }
       },
-      child: Dismissible(
-        key: Key(fileName),
-        confirmDismiss: (DismissDirection direction) async {
-          // Handle swipe left and right for track control
-          if (direction == DismissDirection.startToEnd) {
-            _playPrevious();
-          } else if (direction == DismissDirection.endToStart) {
-            _playNext();
-          }
-          return false; // Prevent dismissal of widget
-        },
-        child: Card(
-          margin: const EdgeInsets.all(0),
-          color: Colors.deepPurpleAccent[200],
-          elevation: 10,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.deepPurpleAccent,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20.0),
+            topRight: Radius.circular(20.0),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const SizedBox(
-                        width: 10), 
-                    Expanded(
-                      child: Text(
-                        fileName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis, // Truncate long text
-                        maxLines: 1, // Limit to a single line
-                      ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        height: 70.0,
+        child: Row(
+          children: [
+             Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Center vertically
+                children: [
+                  Text(
+                    currentSong,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous,
-                          size: 20, color: Colors.white),
-                      onPressed: _playPrevious,
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        _isPlaying
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        size: 30,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (_isPlaying) {
-                            _audioPlayer.pause();
-                          } else {
-                            _audioPlayer.resume();
-                          }
-                          _isPlaying = !_isPlaying;
-                        });
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_next,
-                          size: 20, color: Colors.white),
-                      onPressed: _playNext,
-                    ),
-                  ],
-                ),
-              ],
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    "${_formatDuration(widget.position)} / ${_formatDuration(widget.duration)}",
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12.0),
+                  ),
+                ],
+              ),
             ),
-          ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_previous,
+                color: Colors.white,
+                size: 20.0,
+              ),
+              onPressed: onPreviousSong,
+            ),
+            IconButton(
+              icon: Icon(
+                widget.isPlaying
+                    ? Icons.pause_circle_filled
+                    : Icons.play_circle_fill,
+                color: Colors.white,
+                size: 30.0,
+              ),
+              onPressed: () => widget.onPlayOrPause(
+                  widget.currentlyPlayingIndex!,
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_next,
+                color: Colors.white,
+                size: 20.0,
+              ),
+              onPressed: onNextSong,
+            ),
+           
+          ],
         ),
       ),
     );
   }
 
- 
-
-  void _playNext() async {
-    if (_currentlyPlayingIndex != null &&
-        _currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-      await _audioPlayer.stop();
-      setState(() {
-        _currentlyPlayingIndex = _currentlyPlayingIndex! + 1;
-      });
-      await _audioPlayer.play(
-          DeviceFileSource(widget.audioFiles[_currentlyPlayingIndex!].path));
+  void onNextSong() {
+    // Logic for moving to the next song
+    if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path);
     }
   }
 
-  void _playPrevious() async {
-    if (_currentlyPlayingIndex != null && _currentlyPlayingIndex! > 0) {
-      await _audioPlayer.stop();
-      setState(() {
-        _currentlyPlayingIndex = _currentlyPlayingIndex! - 1;
-      });
-      await _audioPlayer.play(
-          DeviceFileSource(widget.audioFiles[_currentlyPlayingIndex!].path));
+  void onDownSwipe() {
+    if(widget.isPlaying){
+      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
+        widget.audioFiles[widget.currentlyPlayingIndex!].path);
     }
-  }
-
-  void _stopPlayback() async {
-    await _audioPlayer.stop();
     setState(() {
-      _currentlyPlayingIndex = null;
-      _isPlaying = false;
+      showBottomSheet = false;
     });
+  }
+
+  void onPreviousSong() {
+    // Logic for moving to the previous song
+    if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! > 0) {
+      widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path);
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    String minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    String seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
   }
 }
