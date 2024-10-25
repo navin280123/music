@@ -27,7 +27,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   double sliderValue = 0;
-
+  bool showBottomSheet = true;
   @override
   void initState() {
     super.initState();
@@ -38,49 +38,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
-  return Scaffold(
-    body: Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: widget.audioFiles.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text("Profile Screen"),
-                trailing: IconButton(
-                  icon: Icon(
-                    widget.currentlyPlayingIndex == index && widget.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
-                  ),
-                  onPressed: () {
-                    widget.onPlayOrPause(index, widget.audioFiles[index]['url']);
-                  },
-                ),
-              );
-            },
+    return Scaffold(
+      bottomSheet: widget.currentlyPlayingIndex != null && showBottomSheet
+          ? _buildNowPlayingBar()
+          : null,
+    );
+  }
+   Widget _buildNowPlayingBar() {
+    String currentSong =
+        widget.audioFiles[widget.currentlyPlayingIndex!].path.split('/').last;
+
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity! > 0) {
+          // Swiped down, hide the bottom sheet
+          onDownSwipe();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.deepPurpleAccent,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20.0),
+            topRight: Radius.circular(20.0),
           ),
         ),
-        Slider(
-          value: sliderValue,
-          min: 0,
-          max: widget.duration.inSeconds.toDouble(),
-          onChanged: (value) {
-            setState(() {
-              sliderValue = value;
-              widget.audioPlayer.seek(Duration(seconds: value.toInt()));
-            });
-          },
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        height: 70.0,
+        child: Row(
+          children: [
+             Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Center vertically
+                children: [
+                  Text(
+                    currentSong,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    "${_formatDuration(widget.position)} / ${_formatDuration(widget.duration)}",
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12.0),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_previous,
+                color: Colors.white,
+                size: 20.0,
+              ),
+              onPressed: onPreviousSong,
+            ),
+            IconButton(
+              icon: Icon(
+                widget.isPlaying
+                    ? Icons.pause_circle_filled
+                    : Icons.play_circle_fill,
+                color: Colors.white,
+                size: 30.0,
+              ),
+              onPressed: () => widget.onPlayOrPause(
+                  widget.currentlyPlayingIndex!,
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.skip_next,
+                color: Colors.white,
+                size: 20.0,
+              ),
+              onPressed: onNextSong,
+            ),
+           
+          ],
         ),
-        Text(
-          '${widget.position.inMinutes}:${(widget.position.inSeconds % 60).toString().padLeft(2, '0')} / ${widget.duration.inMinutes}:${(widget.duration.inSeconds % 60).toString().padLeft(2, '0')}',
-        ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
+   void onNextSong() {
+    if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+      widget.onPlayOrPause(
+        widget.currentlyPlayingIndex! + 1,
+        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
+      );
+    }
   }
 
+  void onPreviousSong() {
+    if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! > 0) {
+      widget.onPlayOrPause(
+        widget.currentlyPlayingIndex! - 1,
+        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
+      );
+    }
+  }
+  void onDownSwipe() {
+    if(widget.isPlaying){
+      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
+        widget.audioFiles[widget.currentlyPlayingIndex!].path);
+    }
+    setState(() {
+      showBottomSheet = false;
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String hours = twoDigits(duration.inHours);
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+
+    return duration.inHours > 0
+        ? "$hours:$minutes:$seconds"
+        : "$minutes:$seconds";
+  }
 }

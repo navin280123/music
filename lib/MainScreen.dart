@@ -43,10 +43,14 @@ class _MainScreenState extends State<MainScreen> {
         _isPlaying = false;
       });
     } else {
-      if (_currentlyPlayingIndex != null) {
-        await audioPlayer.stop();
+      if (_currentlyPlayingIndex != null && _currentlyPlayingIndex == index) {
+        await audioPlayer.resume();
+      } else {
+        if (_currentlyPlayingIndex != null) {
+          await audioPlayer.stop();
+        }
+        await audioPlayer.play(audioPlayers.DeviceFileSource(path));
       }
-      await audioPlayer.play(audioPlayers.DeviceFileSource(path));
       setState(() {
         _currentlyPlayingIndex = index;
         _isPlaying = true;
