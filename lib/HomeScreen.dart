@@ -44,14 +44,16 @@ class _HomeScreenState extends State<HomeScreen> {
     print("this method is called");
     // Move to the next song when the current song completes
     if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1&&widget.isRepeat==false) {
+        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1 && widget.isRepeat == false) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat,false);
-    }
-    else if(widget.isRepeat==true){
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path, widget.isRepeat, false);
+    } else if (widget.isRepeat == true) {
       print("this repeat method is called");
       widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-          widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,false);
+          widget.audioFiles[widget.currentlyPlayingIndex!].path, widget.isRepeat, false);
+    } else if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! == widget.audioFiles.length - 1) {
+      widget.onPlayOrPause(0, widget.audioFiles[0].path, widget.isRepeat, false);
     }
   }
 
@@ -200,10 +202,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat,true);
+    if (widget.currentlyPlayingIndex != null) {
+      if (widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+        widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
+            widget.audioFiles[widget.currentlyPlayingIndex! + 1].path, widget.isRepeat, true);
+      } else {
+        widget.onPlayOrPause(0, widget.audioFiles[0].path, widget.isRepeat, true);
+      }
     }
   }
 
@@ -218,10 +223,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! > 0) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeat,true);
+    if (widget.currentlyPlayingIndex != null) {
+      if (widget.currentlyPlayingIndex! > 0) {
+        widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
+            widget.audioFiles[widget.currentlyPlayingIndex! - 1].path, widget.isRepeat, true);
+      } else {
+        widget.onPlayOrPause(widget.audioFiles.length - 1,
+            widget.audioFiles[widget.audioFiles.length - 1].path, widget.isRepeat, true);
+      }
     }
   }
 

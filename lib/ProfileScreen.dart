@@ -129,22 +129,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+  void onNextSong() {
+    if (widget.currentlyPlayingIndex != null) {
+      int nextIndex = (widget.currentlyPlayingIndex! + 1) % widget.audioFiles.length;
       widget.onPlayOrPause(
-        widget.currentlyPlayingIndex! + 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat,true
+        nextIndex,
+        widget.audioFiles[nextIndex].path, widget.isRepeat, true
       );
     }
   }
-
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! > 0) {
+    if (widget.currentlyPlayingIndex != null) {
+      int previousIndex = widget.currentlyPlayingIndex! > 0
+          ? widget.currentlyPlayingIndex! - 1
+          : widget.audioFiles.length - 1;
       widget.onPlayOrPause(
-        widget.currentlyPlayingIndex! - 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeat,true
+        previousIndex,
+        widget.audioFiles[previousIndex].path, widget.isRepeat, true
       );
     }
   }

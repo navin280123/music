@@ -8,7 +8,7 @@ class PlayScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String, bool,bool) onPlayOrPause;
+  final Function(int, String, bool, bool) onPlayOrPause;
   final Function(bool) isRepeat;
   final bool isRepeating;
 
@@ -71,20 +71,93 @@ class _PlayScreenState extends State<PlayScreen>
   void showSongSelectionSheet() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.deepPurpleAccent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
-        return ListView.builder(
-          itemCount: widget.audioFiles.length,
-          itemBuilder: (context, index) {
-            final songName = widget.audioFiles[index].path.split('/').last;
-            return ListTile(
-              title: Text(songName),
-              onTap: () {
-                widget.onPlayOrPause(
-                    index, widget.audioFiles[index].path, widget.isRepeating,true);
-                Navigator.pop(context);
-              },
-            );
-          },
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with title and close button
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Select a Song",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white30, thickness: 1),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.audioFiles.length,
+                  itemBuilder: (context, index) {
+                    final songName =
+                        widget.audioFiles[index].path.split('/').last;
+                    return Column(
+                      children: [
+                        InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () {
+                            widget.onPlayOrPause(
+                              index,
+                              widget.audioFiles[index].path,
+                              widget.isRepeating,
+                              true,
+                            );
+                            Navigator.pop(context);
+                          },
+                          child: Card(
+                            color: Colors.deepPurple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12.0),
+                              child: ListTile(
+                                leading: const Icon(Icons.music_note,
+                                    color: Colors.white70),
+                                title: Text(
+                                  songName,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (index < widget.audioFiles.length - 1)
+                          const Divider(
+                            color: Colors.white24,
+                            thickness: 0.5,
+                            indent: 12,
+                            endIndent: 12,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -126,7 +199,8 @@ class _PlayScreenState extends State<PlayScreen>
                                 ? const LinearGradient(
                                     colors: [
                                         Colors.deepPurple,
-                                        Colors.purpleAccent
+                                        Colors.purpleAccent,
+                                        Colors.deepOrange
                                       ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight)
@@ -152,20 +226,26 @@ class _PlayScreenState extends State<PlayScreen>
                       );
                     },
                   ),
-                  const SizedBox(height: 20.0),
-                  Text(
-                    currentSong,
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+
                   const Spacer(),
                   // Slider and Play Row in a Column at the bottom
                   Column(
                     children: [
+                      const SizedBox(height: 20.0),
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(12, 0, 12, 15),
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(
+                          currentSong,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
                           thumbShape:
@@ -241,13 +321,13 @@ class _PlayScreenState extends State<PlayScreen>
                             ),
                             onPressed: widget.currentlyPlayingIndex != null
                                 ? () => widget.onPlayOrPause(
-                                      widget.currentlyPlayingIndex!,
-                                      widget
-                                          .audioFiles[
-                                              widget.currentlyPlayingIndex!]
-                                          .path,
-                                      widget.isRepeating,true
-                                    )
+                                    widget.currentlyPlayingIndex!,
+                                    widget
+                                        .audioFiles[
+                                            widget.currentlyPlayingIndex!]
+                                        .path,
+                                    widget.isRepeating,
+                                    true)
                                 : null,
                           ),
                           IconButton(
@@ -280,22 +360,39 @@ class _PlayScreenState extends State<PlayScreen>
   }
 
   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-      widget.onPlayOrPause(
-          widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
-          widget.isRepeating,true);
+    if (widget.currentlyPlayingIndex != null) {
+      if (widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+        widget.onPlayOrPause(
+            widget.currentlyPlayingIndex! + 1,
+            widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
+            widget.isRepeating,
+            true);
+      } else {
+        // If the current song is the last one, play the first song
+        widget.onPlayOrPause(
+            0,
+            widget.audioFiles[0].path,
+            widget.isRepeating,
+            true);
+      }
     }
   }
-
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! > 0) {
-      widget.onPlayOrPause(
-          widget.currentlyPlayingIndex! - 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
-          widget.isRepeating,true);
+    if (widget.currentlyPlayingIndex != null) {
+      if (widget.currentlyPlayingIndex! > 0) {
+        widget.onPlayOrPause(
+            widget.currentlyPlayingIndex! - 1,
+            widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
+            widget.isRepeating,
+            true);
+      } else {
+        // If the current song is the first one, play the last song
+        widget.onPlayOrPause(
+            widget.audioFiles.length - 1,
+            widget.audioFiles[widget.audioFiles.length - 1].path,
+            widget.isRepeating,
+            true);
+      }
     }
   }
 
