@@ -8,7 +8,7 @@ class ProfileScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String) onPlayOrPause;
+  final Function(int, String,bool) onPlayOrPause;
 
   const ProfileScreen({
     super.key,
@@ -111,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: () => widget.onPlayOrPause(
                   widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path),
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path,false),
             ),
             IconButton(
               icon: Icon(
@@ -132,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
       widget.onPlayOrPause(
         widget.currentlyPlayingIndex! + 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
+        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,false
       );
     }
   }
@@ -142,14 +142,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.currentlyPlayingIndex! > 0) {
       widget.onPlayOrPause(
         widget.currentlyPlayingIndex! - 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
+        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,false
       );
     }
   }
   void onDownSwipe() {
     if(widget.isPlaying){
       widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-        widget.audioFiles[widget.currentlyPlayingIndex!].path);
+        widget.audioFiles[widget.currentlyPlayingIndex!].path,false);
     }
     setState(() {
       showBottomSheet = false;

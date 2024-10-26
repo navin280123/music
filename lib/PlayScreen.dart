@@ -8,7 +8,9 @@ class PlayScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String) onPlayOrPause;
+  final Function(int, String,bool) onPlayOrPause;
+  final Function(bool)  isRepeat;
+  final bool isRepeating;
 
   const PlayScreen({
     super.key,
@@ -19,13 +21,16 @@ class PlayScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
+    required this.isRepeat,
+    required this.isRepeating,
   });
 
   @override
   _PlayScreenState createState() => _PlayScreenState();
 }
 
-class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateMixin {
+class _PlayScreenState extends State<PlayScreen>
+    with SingleTickerProviderStateMixin {
   double sliderValue = 0;
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -33,49 +38,56 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-
-    // Initialize animation controller
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    // Define the scale animation
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
-    // Listen to position changes for the slider
+        duration: const Duration(milliseconds: 1000), vsync: this);
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     widget.audioPlayer.onPositionChanged.listen((position) {
       setState(() {
         sliderValue = position.inSeconds.toDouble();
       });
     });
-
-    // Start or stop animation based on isPlaying state
     _updateAnimationState();
   }
 
   @override
   void didUpdateWidget(covariant PlayScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update animation state whenever the playing status changes
-    if (oldWidget.isPlaying != widget.isPlaying) {
-      _updateAnimationState();
-    }
+    if (oldWidget.isPlaying != widget.isPlaying) _updateAnimationState();
   }
 
   void _updateAnimationState() {
-    if (widget.isPlaying) {
-      _controller.repeat(reverse: true);
-    } else {
-      // Smoothly transition the scale animation to 1.0 when stopping
-      _controller.animateTo(1.0, duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
-    }
+    widget.isPlaying
+        ? _controller.repeat(reverse: true)
+        : _controller.animateTo(1.0,
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOut);
   }
 
   void seekAudio(double seconds) {
     widget.audioPlayer.seek(Duration(seconds: seconds.toInt()));
+  }
+
+
+  void showSongSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return ListView.builder(
+          itemCount: widget.audioFiles.length,
+          itemBuilder: (context, index) {
+            final songName = widget.audioFiles[index].path.split('/').last;
+            return ListTile(
+              title: Text(songName),
+              onTap: () {
+                widget.onPlayOrPause(index, widget.audioFiles[index].path,widget.isRepeating);
+                Navigator.pop(context);
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -90,9 +102,8 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             color: Colors.deepPurpleAccent,
             elevation: 8,
             child: Padding(
@@ -111,15 +122,16 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                             shape: BoxShape.circle,
                             gradient: widget.isPlaying
                                 ? const LinearGradient(
-                                    colors: [Colors.deepPurple, Colors.purpleAccent],
+                                    colors: [
+                                        Colors.deepPurple,
+                                        Colors.purpleAccent
+                                      ],
                                     begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
+                                    end: Alignment.bottomRight)
                                 : const LinearGradient(
                                     colors: [Colors.grey, Colors.black26],
                                     begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
+                                    end: Alignment.bottomRight),
                           ),
                           child: Card(
                             shape: const CircleBorder(),
@@ -127,11 +139,11 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                             elevation: 8,
                             child: Padding(
                               padding: const EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.music_note_outlined,
-                                size: 150.0,
-                                color: widget.isPlaying ? Colors.white : Colors.black54,
-                              ),
+                              child: Icon(Icons.music_note_outlined,
+                                  size: 150.0,
+                                  color: widget.isPlaying
+                                      ? Colors.white
+                                      : Colors.black54),
                             ),
                           ),
                         ),
@@ -139,16 +151,13 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                     },
                   ),
                   const SizedBox(height: 20.0),
-                  Text(
-                    currentSong,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+                  Text(currentSong,
+                      style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1),
                   const SizedBox(height: 30.0),
                   Expanded(
                     child: Column(
@@ -163,9 +172,7 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                               sliderValue = value;
                             });
                           },
-                          onChangeEnd: (value) {
-                            seekAudio(value);
-                          },
+                          onChangeEnd: seekAudio,
                           activeColor: const Color.fromARGB(255, 175, 156, 208),
                           inactiveColor: Colors.deepPurple[100],
                         ),
@@ -173,14 +180,11 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _formatDuration(
-                                  Duration(seconds: sliderValue.toInt())),
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                            Text(
-                              _formatDuration(widget.duration),
-                              style: const TextStyle(color: Colors.grey),
-                            ),
+                                _formatDuration(
+                                    Duration(seconds: sliderValue.toInt())),
+                                style: const TextStyle(color: Colors.grey)),
+                            Text(_formatDuration(widget.duration),
+                                style: const TextStyle(color: Colors.grey)),
                           ],
                         ),
                       ],
@@ -190,36 +194,59 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.skip_previous,
-                          size: 48.0,
-                          color: Colors.white,
+                      Flexible(
+                        child: IconButton(
+                          icon: Icon(
+                            widget.isRepeating ? Icons.repeat : Icons.shuffle,
+                            size: MediaQuery.of(context).size.width * 0.07,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            widget.isRepeat(!widget.isRepeating);
+                          },
                         ),
-                        onPressed: onPreviousSong,
                       ),
-                      IconButton(
-                        icon: Icon(
-                          widget.isPlaying
-                              ? Icons.pause_circle_filled
-                              : Icons.play_circle_fill,
-                          size: 64.0,
-                          color: Colors.white,
+                      Flexible(
+                        child: IconButton(
+                          icon: Icon(Icons.skip_previous,
+                              size: MediaQuery.of(context).size.width * 0.12,
+                              color: Colors.white),
+                          onPressed: onPreviousSong,
                         ),
-                        onPressed: widget.currentlyPlayingIndex != null
-                            ? () => widget.onPlayOrPause(
+                      ),
+                      Flexible(
+                        child: IconButton(
+                          icon: Icon(
+                            widget.isPlaying
+                                ? Icons.pause_circle_filled
+                                : Icons.play_circle_fill,
+                            size: MediaQuery.of(context).size.width * 0.16,
+                            color: Colors.white,
+                          ),
+                          onPressed: widget.currentlyPlayingIndex != null
+                              ? () => widget.onPlayOrPause(
                                   widget.currentlyPlayingIndex!,
-                                  widget.audioFiles[widget.currentlyPlayingIndex!].path,
-                                )
-                            : null,
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.skip_next,
-                          size: 48.0,
-                          color: Colors.white,
+                                  widget
+                                      .audioFiles[widget.currentlyPlayingIndex!]
+                                      .path,widget.isRepeating)
+                              : null,
                         ),
-                        onPressed: onNextSong,
+                      ),
+                      Flexible(
+                        child: IconButton(
+                          icon: Icon(Icons.skip_next,
+                              size: MediaQuery.of(context).size.width * 0.12,
+                              color: Colors.white),
+                          onPressed: onNextSong,
+                        ),
+                      ),
+                      Flexible(
+                        child: IconButton(
+                          icon: Icon(Icons.library_music,
+                              size: MediaQuery.of(context).size.width * 0.07,
+                              color: Colors.white),
+                          onPressed: showSongSelectionSheet,
+                        ),
                       ),
                     ],
                   ),
@@ -235,20 +262,16 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
   void onNextSong() {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-      widget.onPlayOrPause(
-        widget.currentlyPlayingIndex! + 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
-      );
+      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeating);
     }
   }
 
   void onPreviousSong() {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! > 0) {
-      widget.onPlayOrPause(
-        widget.currentlyPlayingIndex! - 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
-      );
+      widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeating);
     }
   }
 
@@ -257,7 +280,6 @@ class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateM
     String hours = twoDigits(duration.inHours);
     String minutes = twoDigits(duration.inMinutes.remainder(60));
     String seconds = twoDigits(duration.inSeconds.remainder(60));
-
     return duration.inHours > 0
         ? "$hours:$minutes:$seconds"
         : "$minutes:$seconds";

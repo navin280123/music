@@ -9,7 +9,8 @@ class HomeScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String) onPlayOrPause;
+  final bool isRepeat;
+  final Function(int, String,bool) onPlayOrPause;
 
   const HomeScreen({
     super.key,
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
+    required this.isRepeat,
   });
 
   @override
@@ -42,9 +44,14 @@ class _HomeScreenState extends State<HomeScreen> {
     print("this method is called");
     // Move to the next song when the current song completes
     if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1&&widget.isRepeat==false) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path);
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat);
+    }
+    else if(widget.isRepeat==true){
+      print("this repeat method is called");
+      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
+          widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat);
     }
   }
 
@@ -91,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         onTap: () {
-          widget.onPlayOrPause(index, file.path);
+          widget.onPlayOrPause(index, file.path,widget.isRepeat);
           setState(() {
             showBottomSheet = true;
           });
@@ -103,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: isPlayingCurrent ? Colors.lightBlueAccent : Colors.white70,
           iconSize: 36.0,
           onPressed: () {
-            widget.onPlayOrPause(index, file.path);
+            widget.onPlayOrPause(index, file.path,widget.isRepeat);
             setState(() {
               showBottomSheet = true;
             });
@@ -176,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               onPressed: () => widget.onPlayOrPause(
                   widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path),
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat),
             ),
             IconButton(
               icon: Icon(
@@ -196,14 +203,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path);
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat);
     }
   }
 
   void onDownSwipe() {
     if (widget.isPlaying) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-          widget.audioFiles[widget.currentlyPlayingIndex!].path);
+          widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat);
     }
     setState(() {
       showBottomSheet = false;
@@ -214,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! > 0) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path);
+          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeat);
     }
   }
 

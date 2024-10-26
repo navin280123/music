@@ -20,6 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isPlaying = false;
+  bool _isRepeat = false;
 
   final audioPlayers.AudioPlayer audioPlayer = audioPlayers.AudioPlayer();
 
@@ -38,25 +39,40 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _playOrPause(int index, String path) async {
-    if (_currentlyPlayingIndex == index && _isPlaying) {
-      await audioPlayer.pause();
-      setState(() {
-        _isPlaying = false;
-      });
-    } else {
-      if (_currentlyPlayingIndex != null && _currentlyPlayingIndex == index) {
-        await audioPlayer.resume();
-      } else {
-        if (_currentlyPlayingIndex != null) {
-          await audioPlayer.stop();
-        }
-        await audioPlayer.play(audioPlayers.DeviceFileSource(path));
-      }
+  void _isRepeatFunction(bool repeat) {
+    setState(() {
+      _isRepeat = repeat;
+    });
+  }
+
+  void _playOrPause(int index, String path, bool repeat) async {
+    if (repeat) {
+      await audioPlayer.stop();
+      await audioPlayer.play(audioPlayers.DeviceFileSource(path));
       setState(() {
         _currentlyPlayingIndex = index;
         _isPlaying = true;
       });
+    } else {
+      if (_currentlyPlayingIndex == index && _isPlaying) {
+        await audioPlayer.pause();
+        setState(() {
+          _isPlaying = false;
+        });
+      } else {
+        if (_currentlyPlayingIndex != null && _currentlyPlayingIndex == index) {
+          await audioPlayer.resume();
+        } else {
+          if (_currentlyPlayingIndex != null) {
+            await audioPlayer.stop();
+          }
+          await audioPlayer.play(audioPlayers.DeviceFileSource(path));
+        }
+        setState(() {
+          _currentlyPlayingIndex = index;
+          _isPlaying = true;
+        });
+      }
     }
   }
 
@@ -109,6 +125,7 @@ class _MainScreenState extends State<MainScreen> {
             duration: _duration,
             position: _position,
             onPlayOrPause: _playOrPause,
+            isRepeat: _isRepeat,
           ),
           PlayScreen(
             audioFiles: widget.audioFiles,
@@ -118,6 +135,8 @@ class _MainScreenState extends State<MainScreen> {
             duration: _duration,
             position: _position,
             onPlayOrPause: _playOrPause,
+            isRepeat: _isRepeatFunction,
+            isRepeating: _isRepeat,
           ),
           ProfileScreen(
             audioFiles: widget.audioFiles,
