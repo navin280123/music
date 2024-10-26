@@ -45,8 +45,9 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _playOrPause(int index, String path, bool repeat) async {
-    if (repeat) {
+  void _playOrPause(int index, String path, bool repeat,bool isclicked) async {
+    if (repeat&&!isclicked) {
+      
       await audioPlayer.stop();
       await audioPlayer.play(audioPlayers.DeviceFileSource(path));
       setState(() {
@@ -146,6 +147,7 @@ class _MainScreenState extends State<MainScreen> {
             duration: _duration,
             position: _position,
             onPlayOrPause: _playOrPause,
+            isRepeat: _isRepeat,
           ),
         ],
       ),

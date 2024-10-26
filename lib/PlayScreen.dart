@@ -8,8 +8,8 @@ class PlayScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String,bool) onPlayOrPause;
-  final Function(bool)  isRepeat;
+  final Function(int, String, bool,bool) onPlayOrPause;
+  final Function(bool) isRepeat;
   final bool isRepeating;
 
   const PlayScreen({
@@ -68,7 +68,6 @@ class _PlayScreenState extends State<PlayScreen>
     widget.audioPlayer.seek(Duration(seconds: seconds.toInt()));
   }
 
-
   void showSongSelectionSheet() {
     showModalBottomSheet(
       context: context,
@@ -80,7 +79,8 @@ class _PlayScreenState extends State<PlayScreen>
             return ListTile(
               title: Text(songName),
               onTap: () {
-                widget.onPlayOrPause(index, widget.audioFiles[index].path,widget.isRepeating);
+                widget.onPlayOrPause(
+                    index, widget.audioFiles[index].path, widget.isRepeating,true);
                 Navigator.pop(context);
               },
             );
@@ -109,6 +109,8 @@ class _PlayScreenState extends State<PlayScreen>
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   AnimatedBuilder(
                     animation: _scaleAnimation,
@@ -151,19 +153,33 @@ class _PlayScreenState extends State<PlayScreen>
                     },
                   ),
                   const SizedBox(height: 20.0),
-                  Text(currentSong,
-                      style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1),
-                  const SizedBox(height: 30.0),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Slider(
+                  Text(
+                    currentSong,
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const Spacer(),
+                  // Slider and Play Row in a Column at the bottom
+                  Column(
+                    children: [
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          thumbShape:
+                              RoundSliderThumbShape(enabledThumbRadius: 8.0),
+                          overlayShape:
+                              RoundSliderOverlayShape(overlayRadius: 16.0),
+                          activeTrackColor: Colors.purple,
+                          inactiveTrackColor:
+                              const Color.fromARGB(255, 255, 255, 255),
+                          thumbColor: const Color.fromARGB(255, 0, 0, 0),
+                          overlayColor: Colors.deepPurple.withAlpha(32),
+                          trackHeight: 5.0,
+                        ),
+                        child: Slider(
                           value: sliderValue,
                           min: 0,
                           max: widget.duration.inSeconds.toDouble(),
@@ -173,80 +189,84 @@ class _PlayScreenState extends State<PlayScreen>
                             });
                           },
                           onChangeEnd: seekAudio,
-                          activeColor: const Color.fromARGB(255, 175, 156, 208),
-                          inactiveColor: Colors.deepPurple[100],
                         ),
-                        Row(
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                                _formatDuration(
-                                    Duration(seconds: sliderValue.toInt())),
-                                style: const TextStyle(color: Colors.grey)),
-                            Text(_formatDuration(widget.duration),
-                                style: const TextStyle(color: Colors.grey)),
+                              _formatDuration(
+                                  Duration(seconds: sliderValue.toInt())),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                            Text(
+                              _formatDuration(widget.duration),
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Flexible(
-                        child: IconButton(
-                          icon: Icon(
-                            widget.isRepeating ? Icons.repeat : Icons.shuffle,
-                            size: MediaQuery.of(context).size.width * 0.07,
-                            color: Colors.white,
+                      ),
+                      const SizedBox(height: 20.0),
+                      // Play button row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              widget.isRepeating ? Icons.repeat : Icons.shuffle,
+                              size: MediaQuery.of(context).size.width * 0.06,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              widget.isRepeat(!widget.isRepeating);
+                            },
                           ),
-                          onPressed: () {
-                            widget.isRepeat(!widget.isRepeating);
-                          },
-                        ),
-                      ),
-                      Flexible(
-                        child: IconButton(
-                          icon: Icon(Icons.skip_previous,
-                              size: MediaQuery.of(context).size.width * 0.12,
-                              color: Colors.white),
-                          onPressed: onPreviousSong,
-                        ),
-                      ),
-                      Flexible(
-                        child: IconButton(
-                          icon: Icon(
-                            widget.isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_fill,
-                            size: MediaQuery.of(context).size.width * 0.16,
-                            color: Colors.white,
+                          IconButton(
+                            icon: Icon(
+                              Icons.skip_previous,
+                              size: MediaQuery.of(context).size.width * 0.08,
+                              color: Colors.white,
+                            ),
+                            onPressed: onPreviousSong,
                           ),
-                          onPressed: widget.currentlyPlayingIndex != null
-                              ? () => widget.onPlayOrPause(
-                                  widget.currentlyPlayingIndex!,
-                                  widget
-                                      .audioFiles[widget.currentlyPlayingIndex!]
-                                      .path,widget.isRepeating)
-                              : null,
-                        ),
-                      ),
-                      Flexible(
-                        child: IconButton(
-                          icon: Icon(Icons.skip_next,
+                          IconButton(
+                            icon: Icon(
+                              widget.isPlaying
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_fill,
                               size: MediaQuery.of(context).size.width * 0.12,
-                              color: Colors.white),
-                          onPressed: onNextSong,
-                        ),
-                      ),
-                      Flexible(
-                        child: IconButton(
-                          icon: Icon(Icons.library_music,
-                              size: MediaQuery.of(context).size.width * 0.07,
-                              color: Colors.white),
-                          onPressed: showSongSelectionSheet,
-                        ),
+                              color: Colors.white,
+                            ),
+                            onPressed: widget.currentlyPlayingIndex != null
+                                ? () => widget.onPlayOrPause(
+                                      widget.currentlyPlayingIndex!,
+                                      widget
+                                          .audioFiles[
+                                              widget.currentlyPlayingIndex!]
+                                          .path,
+                                      widget.isRepeating,true
+                                    )
+                                : null,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.skip_next,
+                              size: MediaQuery.of(context).size.width * 0.08,
+                              color: Colors.white,
+                            ),
+                            onPressed: onNextSong,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.library_music,
+                              size: MediaQuery.of(context).size.width * 0.06,
+                              color: Colors.white,
+                            ),
+                            onPressed: showSongSelectionSheet,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -262,16 +282,20 @@ class _PlayScreenState extends State<PlayScreen>
   void onNextSong() {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeating);
+      widget.onPlayOrPause(
+          widget.currentlyPlayingIndex! + 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
+          widget.isRepeating,true);
     }
   }
 
   void onPreviousSong() {
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! > 0) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeating);
+      widget.onPlayOrPause(
+          widget.currentlyPlayingIndex! - 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
+          widget.isRepeating,true);
     }
   }
 

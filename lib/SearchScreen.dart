@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
-  final Function(int, String,bool) onPlayOrPause;
+  final Function(int, String,bool,bool) onPlayOrPause;
   final audioPlayers.AudioPlayer audioPlayer;
 
   const SearchScreen({
@@ -74,13 +74,13 @@ class _SearchScreenState extends State<SearchScreen> {
               overflow: TextOverflow.ellipsis, // Add this line to ensure single line display
             ),
             onTap: () {
-              widget.onPlayOrPause(originalIndex, file.path,false);
+              widget.onPlayOrPause(originalIndex, file.path,false,true);
               Navigator.pop(context);
             },
             trailing: IconButton(
               icon: const Icon(Icons.play_arrow, color: Color.fromARGB(255, 190, 152, 254)),
               onPressed: () {
-          widget.onPlayOrPause(originalIndex, file.path,false);
+          widget.onPlayOrPause(originalIndex, file.path,false,true);
           Navigator.pop(context);
               },
             ),

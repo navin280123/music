@@ -8,7 +8,8 @@ class ProfileScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String,bool) onPlayOrPause;
+  final Function(int, String,bool,bool) onPlayOrPause;
+  final bool isRepeat;
 
   const ProfileScreen({
     super.key,
@@ -19,6 +20,7 @@ class ProfileScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
+    required this.isRepeat,
   });
 
   @override
@@ -111,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: () => widget.onPlayOrPause(
                   widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path,false),
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true),
             ),
             IconButton(
               icon: Icon(
@@ -132,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
       widget.onPlayOrPause(
         widget.currentlyPlayingIndex! + 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,false
+        widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,widget.isRepeat,true
       );
     }
   }
@@ -142,14 +144,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.currentlyPlayingIndex! > 0) {
       widget.onPlayOrPause(
         widget.currentlyPlayingIndex! - 1,
-        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,false
+        widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,widget.isRepeat,true
       );
     }
   }
   void onDownSwipe() {
     if(widget.isPlaying){
       widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-        widget.audioFiles[widget.currentlyPlayingIndex!].path,false);
+        widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true);
     }
     setState(() {
       showBottomSheet = false;
