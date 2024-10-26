@@ -30,20 +30,37 @@ class _HomeScreenState extends State<HomeScreen> {
   bool showBottomSheet = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Add listener for when the audio completes
+    widget.audioPlayer.onPlayerComplete.listen((event) {
+      _onSongComplete();
+    });
+  }
+
+  void _onSongComplete() {
+    print("this method is called");
+    // Move to the next song when the current song completes
+    if (widget.currentlyPlayingIndex != null &&
+        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
+      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
+          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple, // Set the background color here
+      backgroundColor: Colors.deepPurple,
       body: ListView.builder(
         padding: EdgeInsets.only(
-            bottom: widget.currentlyPlayingIndex != null ? 70.0 : 0.0),
+            bottom: widget.isPlaying ? 70.0 : 0.0),
         itemCount: widget.audioFiles.length,
         itemBuilder: (context, index) {
           return _buildMusicTile(widget.audioFiles[index], index);
         },
       ),
-      bottomSheet: widget.isPlaying 
-          ? _buildNowPlayingBar()
-          : null,
+      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
     );
   }
 
@@ -67,8 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: Text(
           fileName,
-          overflow:
-              TextOverflow.ellipsis, // Ensure filename is displayed in one line
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: isPlayingCurrent ? Colors.white : Colors.white70,
@@ -104,7 +120,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onVerticalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
-          // Swiped down, hide the bottom sheet
           onDownSwipe();
         }
       },
@@ -120,11 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 70.0,
         child: Row(
           children: [
-             Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // Center vertically
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     currentSong,
@@ -172,7 +186,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               onPressed: onNextSong,
             ),
-           
           ],
         ),
       ),
@@ -180,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onNextSong() {
-    // Logic for moving to the next song
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
@@ -189,9 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onDownSwipe() {
-    if(widget.isPlaying){
+    if (widget.isPlaying) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-        widget.audioFiles[widget.currentlyPlayingIndex!].path);
+          widget.audioFiles[widget.currentlyPlayingIndex!].path);
     }
     setState(() {
       showBottomSheet = false;
@@ -199,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onPreviousSong() {
-    // Logic for moving to the previous song
     if (widget.currentlyPlayingIndex != null &&
         widget.currentlyPlayingIndex! > 0) {
       widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
@@ -207,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-   String _formatDuration(Duration duration) {
+  String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String hours = twoDigits(duration.inHours);
     String minutes = twoDigits(duration.inMinutes.remainder(60));
