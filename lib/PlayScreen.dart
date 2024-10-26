@@ -25,17 +25,53 @@ class PlayScreen extends StatefulWidget {
   _PlayScreenState createState() => _PlayScreenState();
 }
 
-class _PlayScreenState extends State<PlayScreen> {
+class _PlayScreenState extends State<PlayScreen> with SingleTickerProviderStateMixin {
   double sliderValue = 0;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controller
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    // Define the scale animation
+    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    // Listen to position changes for the slider
     widget.audioPlayer.onPositionChanged.listen((position) {
       setState(() {
         sliderValue = position.inSeconds.toDouble();
       });
     });
+
+    // Start or stop animation based on isPlaying state
+    _updateAnimationState();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlayScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update animation state whenever the playing status changes
+    if (oldWidget.isPlaying != widget.isPlaying) {
+      _updateAnimationState();
+    }
+  }
+
+  void _updateAnimationState() {
+    if (widget.isPlaying) {
+      _controller.repeat(reverse: true);
+    } else {
+      // Smoothly transition the scale animation to 1.0 when stopping
+      _controller.animateTo(1.0, duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
+    }
   }
 
   void seekAudio(double seconds) {
@@ -49,7 +85,7 @@ class _PlayScreenState extends State<PlayScreen> {
         : "No song playing";
 
     return Scaffold(
-      backgroundColor: Colors.deepPurple, // Background color set to deep purple
+      backgroundColor: Colors.deepPurple,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -63,46 +99,52 @@ class _PlayScreenState extends State<PlayScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeInOut,
-                      width: widget.isPlaying ? 300.0 : 200.0,
-                      height: widget.isPlaying ? 300.0 : 200.0,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: widget.isPlaying
-                            ? const LinearGradient(
-                                colors: [Colors.deepPurple, Colors.purpleAccent],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : const LinearGradient(
-                                colors: [Colors.grey, Colors.black26],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                  AnimatedBuilder(
+                    animation: _scaleAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: Container(
+                          width: 250,
+                          height: 250,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: widget.isPlaying
+                                ? const LinearGradient(
+                                    colors: [Colors.deepPurple, Colors.purpleAccent],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : const LinearGradient(
+                                    colors: [Colors.grey, Colors.black26],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                          ),
+                          child: Card(
+                            shape: const CircleBorder(),
+                            color: Colors.transparent,
+                            elevation: 8,
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.music_note_outlined,
+                                size: 150.0,
+                                color: widget.isPlaying ? Colors.white : Colors.black54,
                               ),
-                      ),
-                      child: Card(
-                        shape: const CircleBorder(),
-                        color: Colors.transparent,
-                        elevation: 8,
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Icon(
-                            Icons.music_note_outlined,
-                            size: 150.0,
-                            color: widget.isPlaying ? Colors.white : Colors.black54,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20.0),
                   Text(
                     currentSong,
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
-                      color: const Color.fromARGB(255, 255, 255, 255),
+                      color: Colors.white,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -152,7 +194,7 @@ class _PlayScreenState extends State<PlayScreen> {
                         icon: const Icon(
                           Icons.skip_previous,
                           size: 48.0,
-                          color: Color.fromARGB(255, 255, 255, 255),
+                          color: Colors.white,
                         ),
                         onPressed: onPreviousSong,
                       ),
@@ -162,14 +204,12 @@ class _PlayScreenState extends State<PlayScreen> {
                               ? Icons.pause_circle_filled
                               : Icons.play_circle_fill,
                           size: 64.0,
-                          color: const Color.fromARGB(255, 255, 255, 255),
+                          color: Colors.white,
                         ),
                         onPressed: widget.currentlyPlayingIndex != null
                             ? () => widget.onPlayOrPause(
                                   widget.currentlyPlayingIndex!,
-                                  widget
-                                      .audioFiles[widget.currentlyPlayingIndex!]
-                                      .path,
+                                  widget.audioFiles[widget.currentlyPlayingIndex!].path,
                                 )
                             : null,
                       ),
@@ -177,7 +217,7 @@ class _PlayScreenState extends State<PlayScreen> {
                         icon: const Icon(
                           Icons.skip_next,
                           size: 48.0,
-                          color: Color.fromARGB(255, 255, 255, 255),
+                          color: Colors.white,
                         ),
                         onPressed: onNextSong,
                       ),
@@ -221,5 +261,11 @@ class _PlayScreenState extends State<PlayScreen> {
     return duration.inHours > 0
         ? "$hours:$minutes:$seconds"
         : "$minutes:$seconds";
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
