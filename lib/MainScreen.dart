@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
+import 'package:music/SearchScreen.dart';
 
 class MainScreen extends StatefulWidget {
   final List<dynamic> audioFiles; // List of audio files passed to the MainScreen
@@ -64,6 +65,19 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void _openSearchScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SearchScreen(
+          audioFiles: widget.audioFiles,
+          onPlayOrPause: _playOrPause,
+          audioPlayer: audioPlayer,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,6 +87,12 @@ class _MainScreenState extends State<MainScreen> {
           "Play Music",
           style: TextStyle(color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: _openSearchScreen,
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _currentIndex,

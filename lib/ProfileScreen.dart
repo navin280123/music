@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomSheet: widget.currentlyPlayingIndex != null && showBottomSheet
+      bottomSheet: widget.isPlaying
           ? _buildNowPlayingBar()
           : null,
     );
