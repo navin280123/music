@@ -6,7 +6,8 @@ import 'package:music/ProfileScreen.dart';
 import 'package:music/SearchScreen.dart';
 
 class MainScreen extends StatefulWidget {
-  final List<dynamic> audioFiles; // List of audio files passed to the MainScreen
+  final List<dynamic>
+      audioFiles; // List of audio files passed to the MainScreen
   MainScreen({super.key, required this.audioFiles});
 
   @override
@@ -19,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   bool _isPlaying = false;
-  
+
   final audioPlayers.AudioPlayer audioPlayer = audioPlayers.AudioPlayer();
 
   @override
@@ -90,6 +91,9 @@ class _MainScreenState extends State<MainScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
+            iconSize: 30,
+            color: Colors.white,
+            padding: EdgeInsets.fromLTRB(0, 0, 20, 0),
             onPressed: _openSearchScreen,
           ),
         ],

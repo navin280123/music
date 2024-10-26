@@ -63,18 +63,38 @@ class _PlayScreenState extends State<PlayScreen> {
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 children: [
-                    Card(
-                    shape: CircleBorder(),
-                    color: const Color.fromARGB(255, 193, 186, 212),
-                    elevation: 8,
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Icon(
-                      Icons.music_note_outlined,
-                      size: 200.0,
-                      color: Colors.deepPurple,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 1000),
+                      curve: Curves.easeInOut,
+                      width: widget.isPlaying ? 300.0 : 200.0,
+                      height: widget.isPlaying ? 300.0 : 200.0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: widget.isPlaying
+                            ? const LinearGradient(
+                                colors: [Colors.deepPurple, Colors.purpleAccent],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Colors.grey, Colors.black26],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                       ),
-                    ),
+                      child: Card(
+                        shape: const CircleBorder(),
+                        color: Colors.transparent,
+                        elevation: 8,
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Icon(
+                            Icons.music_note_outlined,
+                            size: 150.0,
+                            color: widget.isPlaying ? Colors.white : Colors.black54,
+                          ),
+                        ),
+                      ),
                     ),
                   const SizedBox(height: 20.0),
                   Text(

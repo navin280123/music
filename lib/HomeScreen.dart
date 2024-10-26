@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return _buildMusicTile(widget.audioFiles[index], index);
         },
       ),
-      bottomSheet: widget.isPlaying || widget.currentlyPlayingIndex != null
+      bottomSheet: widget.isPlaying 
           ? _buildNowPlayingBar()
           : null,
     );
