@@ -4,7 +4,7 @@ import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 import 'package:music/SearchScreen.dart';
-
+import 'package:music/Notification.dart';
 class MainScreen extends StatefulWidget {
   final List<dynamic>
       audioFiles; // List of audio files passed to the MainScreen
@@ -44,8 +44,16 @@ class _MainScreenState extends State<MainScreen> {
       _isRepeat = repeat;
     });
   }
-
   void _playOrPause(int index, String path, bool repeat,bool isclicked) async {
+    if(_isPlaying){
+      print("Notification is called");
+      NotificationServices().showNotification(
+        id: 0,
+        title: 'Music Player',
+        body: 'Music Paused',
+        payLoad: 'Music Paused',
+      );
+    }
     if (repeat&&!isclicked) {
       
       await audioPlayer.stop();

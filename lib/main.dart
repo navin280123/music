@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:music/MainScreen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:music/Notification.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,6 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     startTimers();
     requestPermissionAndLoadFiles();
+    NotificationServices().initNotificaiton();
   }
 
   void startTimers() {
