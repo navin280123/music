@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -8,7 +9,7 @@ class ProfileScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String,bool,bool) onPlayOrPause;
+  final Function(int, String, bool, bool) onPlayOrPause;
   final bool isRepeat;
 
   const ProfileScreen({
@@ -30,6 +31,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   double sliderValue = 0;
   bool showBottomSheet = true;
+
   @override
   void initState() {
     super.initState();
@@ -43,19 +45,216 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomSheet: widget.isPlaying
-          ? _buildNowPlayingBar()
-          : null,
+      backgroundColor: Colors.deepPurple,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: widget.isPlaying ? 80.0 : 0.0),
+        child: Column(
+          children: [
+            _buildProfileHeader(),
+            const SizedBox(height: 20),
+            _buildDeveloperInfo(),
+            _buildAboutApp(),
+          ],
+        ),
+      ),
+      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
     );
   }
-   Widget _buildNowPlayingBar() {
+
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Card(
+            elevation: 6.0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Column(
+                children: [
+                  const CircleAvatar(
+                    radius: 50.0,
+                    backgroundImage: AssetImage('assets/profile.png'),
+                  ),
+                  const SizedBox(height: 12.0),
+                  const Text(
+                    "Developer's Profile",
+                    style: TextStyle(
+                      fontSize: 24.0,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildSocialIcon(Icons.facebook, "Facebook"),
+                      _buildSocialIcon(Icons.camera_alt, "Instagram"),
+                      _buildSocialIcon(Icons.code, "GitHub"),
+                      _buildSocialIcon(Icons.work, "LinkedIn"),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      final Uri emailLaunchUri = Uri(
+                        scheme: 'mailto',
+                        path: 'Kumarnavinverma7@gmail.com',
+                        query: 'subject=App Feedback&body=Hello Navin,',
+                      );
+
+                      _launchUrl(emailLaunchUri);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20.0),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 25.0, vertical: 12.0),
+                      child: const Text(
+                        'Contact Developer',
+                        style: TextStyle(fontSize: 16.0, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialIcon(IconData icon, String label) {
+    return Column(
+      children: [
+        IconButton(
+          icon: Icon(icon, color: Colors.deepPurple, size: 30),
+          onPressed: () => _showDialog(label),
+        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
+    );
+  }
+
+  void _showDialog(String platform) async {
+    String url;
+    switch (platform) {
+      case "Facebook":
+        url = "https://www.facebook.com/navin2801";
+        break;
+      case "Instagram":
+        url = "https://www.instagram.com/navin.2801";
+        break;
+      case "GitHub":
+        url = "https://github.com/navin280123";
+        break;
+      case "LinkedIn":
+        url = "https://www.linkedin.com/in/navin-kumar-verma";
+        break;
+      default:
+        url = "https://www.example.com";
+    }
+
+    await _launchUrl(Uri.parse(url));
+  }
+
+  Widget _buildDeveloperInfo() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        elevation: 6.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Developer Information",
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.deepPurple,
+                ),
+              ),
+              const Divider(color: Colors.deepPurpleAccent),
+              const SizedBox(height: 8),
+              _buildInfoRow(Icons.person, "Navin Kumar Verma"),
+              _buildInfoRow(Icons.email, "Kumarnavinverma7@gmail.com"),
+              _buildInfoRow(Icons.description,
+                  "Flutter Developer with a passion for elegant applications."),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.deepPurple),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 16.0))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutApp() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Card(
+        elevation: 6.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "About this App",
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.deepPurple,
+                ),
+              ),
+              const Divider(color: Colors.deepPurpleAccent),
+              const SizedBox(height: 8),
+              _buildInfoRow(Icons.apps, "App Name: Audio Player"),
+              _buildInfoRow(Icons.verified, "Version: 1.0.0"),
+              _buildInfoRow(Icons.description,
+                  "This app allows you to play audio files and manage playback with a sleek UI."),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNowPlayingBar() {
     String currentSong =
         widget.audioFiles[widget.currentlyPlayingIndex!].path.split('/').last;
 
     return GestureDetector(
       onVerticalDragEnd: (details) {
         if (details.primaryVelocity! > 0) {
-          // Swiped down, hide the bottom sheet
           onDownSwipe();
         }
       },
@@ -71,11 +270,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         height: 70.0,
         child: Row(
           children: [
-             Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment:
-                    MainAxisAlignment.center, // Center vertically
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     currentSong,
@@ -113,7 +311,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: () => widget.onPlayOrPause(
                   widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true),
+                  widget.audioFiles[widget.currentlyPlayingIndex!].path,
+                  widget.isRepeat,
+                  true),
             ),
             IconButton(
               icon: Icon(
@@ -123,36 +323,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onPressed: onNextSong,
             ),
-           
           ],
         ),
       ),
     );
   }
+
   void onNextSong() {
     if (widget.currentlyPlayingIndex != null) {
-      int nextIndex = (widget.currentlyPlayingIndex! + 1) % widget.audioFiles.length;
+      int nextIndex =
+          (widget.currentlyPlayingIndex! + 1) % widget.audioFiles.length;
       widget.onPlayOrPause(
-        nextIndex,
-        widget.audioFiles[nextIndex].path, widget.isRepeat, true
-      );
+          nextIndex, widget.audioFiles[nextIndex].path, widget.isRepeat, true);
     }
   }
+
   void onPreviousSong() {
     if (widget.currentlyPlayingIndex != null) {
-      int previousIndex = widget.currentlyPlayingIndex! > 0
-          ? widget.currentlyPlayingIndex! - 1
-          : widget.audioFiles.length - 1;
+      int prevIndex = widget.currentlyPlayingIndex! - 1;
+      if (prevIndex < 0) prevIndex = widget.audioFiles.length - 1;
       widget.onPlayOrPause(
-        previousIndex,
-        widget.audioFiles[previousIndex].path, widget.isRepeat, true
-      );
+          prevIndex, widget.audioFiles[prevIndex].path, widget.isRepeat, true);
     }
   }
+
   void onDownSwipe() {
-    if(widget.isPlaying){
-      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-        widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true);
+    if (widget.isPlaying) {
+      widget.onPlayOrPause(
+          widget.currentlyPlayingIndex!,
+          widget.audioFiles[widget.currentlyPlayingIndex!].path,
+          widget.isRepeat,
+          true);
     }
     setState(() {
       showBottomSheet = false;
@@ -169,4 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? "$hours:$minutes:$seconds"
         : "$minutes:$seconds";
   }
+  Future<void> _launchUrl(Uri url) async {
+  if (!await launchUrl(url)) {
+    throw Exception('Could not launch $url');
+  }
+}
 }

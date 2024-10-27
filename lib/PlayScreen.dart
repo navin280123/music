@@ -77,13 +77,13 @@ class _PlayScreenState extends State<PlayScreen>
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Header with title and close button
               Padding(
-                padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -129,7 +129,7 @@ class _PlayScreenState extends State<PlayScreen>
                             ),
                             child: Padding(
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 12.0),
+                                  const EdgeInsets.symmetric(vertical: 6.0),
                               child: ListTile(
                                 leading: const Icon(Icons.music_note,
                                     color: Colors.white70),
@@ -200,7 +200,6 @@ class _PlayScreenState extends State<PlayScreen>
                                     colors: [
                                         Colors.deepPurple,
                                         Colors.purpleAccent,
-                                        Colors.deepOrange
                                       ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight)
