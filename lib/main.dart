@@ -106,14 +106,20 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     // Add additional common directories to search
-    Directory musicDirectory = Directory('/storage/emulated/0/Music');
-    if (musicDirectory.existsSync()) {
-      audioFiles.addAll(_getFilesFromDirectory(musicDirectory, '.mp3'));
-    }
+    List<String> directoriesToSearch = [
+      '/storage/emulated/0/Music',
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/DCIM',
+      '/storage/sdcard1/Music',
+      '/storage/sdcard1/Download',
+      '/storage/sdcard1/DCIM'
+    ];
 
-    Directory downloadDirectory = Directory('/storage/emulated/0/Download');
-    if (downloadDirectory.existsSync()) {
-      audioFiles.addAll(_getFilesFromDirectory(downloadDirectory, '.mp3'));
+    for (String path in directoriesToSearch) {
+      Directory dir = Directory(path);
+      if (dir.existsSync()) {
+        audioFiles.addAll(_getFilesFromDirectory(dir, '.mp3'));
+      }
     }
 
     return audioFiles;
