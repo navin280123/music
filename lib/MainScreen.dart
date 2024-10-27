@@ -50,8 +50,10 @@ class _MainScreenState extends State<MainScreen> {
       NotificationServices().showCurrentlyPlayingNotification(
         id: 0,
         title: widget.audioFiles[index].path.split('/').last,
-        artist: "Navin",
-        albumArt: 'assets/icon.png',
+        artist: "",
+        position: _position.toString().split('.').first,
+        duration: _duration.toString().split('.').first,
+        isPlaying: true,
       );
     }
     if (repeat&&!isclicked) {

@@ -1,9 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationServices {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-  Future<void> initNotificaiton() async {
+
+  Future<void> initNotification() async {
     AndroidInitializationSettings initializationSettingsAndroid =
         const AndroidInitializationSettings('music');
     var initializationSettingsIOS = DarwinInitializationSettings(
@@ -19,24 +21,50 @@ class NotificationServices {
             (NotificationResponse notificationResponse) async {});
   }
 
-  Future showCurrentlyPlayingNotification(
-      {int id = 0, required String title, required String artist, String? albumArt}) async {
+  Future<void> showCurrentlyPlayingNotification({
+    int id = 0,
+    required String title,
+    required String artist,
+    required String position,
+    required String duration,
+    bool isPlaying = true,
+  }) async {
     return flutterLocalNotificationsPlugin.show(
-        id, title, artist, await notificationDetails(albumArt),
-        payload: 'currently_playing');
+      id,
+      title,
+      '$artist - $position / $duration',
+      await _notificationDetails(isPlaying),
+      payload: 'currently_playing',
+    );
   }
 
-  Future<NotificationDetails> notificationDetails(String? albumArt) async {
+  Future<NotificationDetails> _notificationDetails(bool isPlaying) async {
     final androidDetails = AndroidNotificationDetails(
-      'currently_playing_channel', 'Currently Playing',
+      'currently_playing_channel',
+      'Currently Playing',
       importance: Importance.max,
       priority: Priority.high,
-      styleInformation: albumArt != null
-          ? BigPictureStyleInformation(
-              FilePathAndroidBitmap(albumArt),
-              largeIcon: FilePathAndroidBitmap(albumArt),
-            )
-          : null,
+      ongoing: true, // Keep notification persistent
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'previous_action', // Unique ID for action
+          'Previous', // Action title
+          icon: DrawableResourceAndroidBitmap('previous'),
+        ),
+        AndroidNotificationAction(
+          isPlaying ? 'pause_action' : 'play_action', // Toggle play/pause
+          isPlaying ? 'Pause' : 'Play',
+          icon: DrawableResourceAndroidBitmap(
+              isPlaying ? 'pause' : 'play'), // Appropriate icon
+        ),
+        AndroidNotificationAction(
+          'next_action',
+          'Next',
+          icon: DrawableResourceAndroidBitmap('next'),
+        ),
+      ],
+      styleInformation:
+          const DefaultStyleInformation(true, true), // No album art
     );
 
     final iOSDetails = DarwinNotificationDetails();
