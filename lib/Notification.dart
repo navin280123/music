@@ -19,19 +19,28 @@ class NotificationServices {
             (NotificationResponse notificationResponse) async {});
   }
 
-  Future showNotification(
-      {int id = 0, String? title, String? body, String? payLoad}) async {
+  Future showCurrentlyPlayingNotification(
+      {int id = 0, required String title, required String artist, String? albumArt}) async {
     return flutterLocalNotificationsPlugin.show(
-        id, title, body, await notificationDetails(),
-        payload: payLoad);
+        id, title, artist, await notificationDetails(albumArt),
+        payload: 'currently_playing');
   }
 
-  notificationDetails() {
-    return NotificationDetails(
-        android: AndroidNotificationDetails(
-            'channel id', 'channel name', 
-            importance: Importance.max, priority: Priority.high),
-            iOS: DarwinNotificationDetails());
+  Future<NotificationDetails> notificationDetails(String? albumArt) async {
+    final androidDetails = AndroidNotificationDetails(
+      'currently_playing_channel', 'Currently Playing',
+      importance: Importance.max,
+      priority: Priority.high,
+      styleInformation: albumArt != null
+          ? BigPictureStyleInformation(
+              FilePathAndroidBitmap(albumArt),
+              largeIcon: FilePathAndroidBitmap(albumArt),
+            )
+          : null,
+    );
 
+    final iOSDetails = DarwinNotificationDetails();
+
+    return NotificationDetails(android: androidDetails, iOS: iOSDetails);
   }
 }

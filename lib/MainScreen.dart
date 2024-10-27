@@ -45,13 +45,13 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
   void _playOrPause(int index, String path, bool repeat,bool isclicked) async {
-    if(_isPlaying){
+    if(!_isPlaying){
       print("Notification is called");
-      NotificationServices().showNotification(
+      NotificationServices().showCurrentlyPlayingNotification(
         id: 0,
-        title: 'Music Player',
-        body: 'Music Paused',
-        payLoad: 'Music Paused',
+        title: widget.audioFiles[index].path.split('/').last,
+        artist: "Navin",
+        albumArt: 'assets/icon.png',
       );
     }
     if (repeat&&!isclicked) {
