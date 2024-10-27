@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 
 class PlayScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -42,7 +42,7 @@ class _PlayScreenState extends State<PlayScreen>
         duration: const Duration(milliseconds: 1000), vsync: this);
     _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    widget.audioPlayer.onPositionChanged.listen((position) {
+    widget.audioPlayer.positionStream.listen((position) {
       setState(() {
         sliderValue = position.inSeconds.toDouble();
       });

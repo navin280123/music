@@ -1,11 +1,12 @@
 
-import 'package:audioplayers/audioplayers.dart' as audioPlayers;
+
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
   final Function(int, String,bool,bool) onPlayOrPause;
-  final audioPlayers.AudioPlayer audioPlayer;
+  final AudioPlayer audioPlayer;
 
   const SearchScreen({
     super.key,

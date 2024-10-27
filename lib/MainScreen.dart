@@ -1,13 +1,16 @@
-import 'package:audioplayers/audioplayers.dart' as audioPlayers;
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'package:flutter_media_metadata/flutter_media_metadata.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 import 'package:music/SearchScreen.dart';
-import 'package:music/Notification.dart';
+
 class MainScreen extends StatefulWidget {
-  final List<dynamic>
-      audioFiles; // List of audio files passed to the MainScreen
+  final List<String> audioFiles;
+
   MainScreen({super.key, required this.audioFiles});
 
   @override
@@ -22,68 +25,68 @@ class _MainScreenState extends State<MainScreen> {
   bool _isPlaying = false;
   bool _isRepeat = false;
 
-  final audioPlayers.AudioPlayer audioPlayer = audioPlayers.AudioPlayer();
+  final AudioPlayer audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-    audioPlayer.onDurationChanged.listen((Duration duration) {
+    audioPlayer.durationStream.listen((duration) {
       setState(() {
-        _duration = duration;
+        _duration = duration ?? Duration.zero;
       });
     });
-    audioPlayer.onPositionChanged.listen((Duration position) {
+    audioPlayer.positionStream.listen((position) {
       setState(() {
         _position = position;
       });
     });
   }
 
-  void _isRepeatFunction(bool repeat) {
-    setState(() {
-      _isRepeat = repeat;
-    });
-  }
-  void _playOrPause(int index, String path, bool repeat,bool isclicked) async {
-    if(!_isPlaying){
-      print("Notification is called");
-      NotificationServices().showCurrentlyPlayingNotification(
-        id: 0,
-        title: widget.audioFiles[index].path.split('/').last,
-        artist: "",
-        position: _position.toString().split('.').first,
-        duration: _duration.toString().split('.').first,
-        isPlaying: true,
-      );
-    }
-    if (repeat&&!isclicked) {
-      
-      await audioPlayer.stop();
-      await audioPlayer.play(audioPlayers.DeviceFileSource(path));
+  Future<void> _playOrPause(int index, String path, bool repeat, bool isClicked) async {
+    if (repeat && !isClicked) {
+      await _playNewTrack(index, path);
+    } else if (_currentlyPlayingIndex == index && _isPlaying) {
+      await audioPlayer.pause();
       setState(() {
-        _currentlyPlayingIndex = index;
-        _isPlaying = true;
+        _isPlaying = false;
       });
     } else {
-      if (_currentlyPlayingIndex == index && _isPlaying) {
-        await audioPlayer.pause();
-        setState(() {
-          _isPlaying = false;
-        });
-      } else {
-        if (_currentlyPlayingIndex != null && _currentlyPlayingIndex == index) {
-          await audioPlayer.resume();
-        } else {
-          if (_currentlyPlayingIndex != null) {
-            await audioPlayer.stop();
-          }
-          await audioPlayer.play(audioPlayers.DeviceFileSource(path));
-        }
-        setState(() {
-          _currentlyPlayingIndex = index;
-          _isPlaying = true;
-        });
+      if (_currentlyPlayingIndex != null && _currentlyPlayingIndex != index) {
+        await audioPlayer.stop();
       }
+      await _playNewTrack(index, path);
+    }
+  }
+
+  Future<void> _playNewTrack(int index, String path) async {
+    final metadata = await _fetchMetadata(path);
+
+    await audioPlayer.setAudioSource(
+      AudioSource.uri(
+        Uri.file(path),
+        tag: MediaItem(
+          id: '$index',
+          album: metadata.albumName ?? "Unknown Album",
+          title: metadata.trackName ?? "Unknown Title",
+          artist: metadata.authorName ?? "Unknown Artist",
+          artUri: metadata.albumArt != null ? Uri.parse(Uri.dataFromBytes(metadata.albumArt!).toString()) : null,
+        ),
+      ),
+    );
+    await audioPlayer.play();
+    setState(() {
+      _currentlyPlayingIndex = index;
+      _isPlaying = true;
+    });
+  }
+
+  Future<Metadata> _fetchMetadata(String path) async {
+    final metadataRetriever = MetadataRetriever();
+    try {
+      return await MetadataRetriever.fromFile(File(path));
+    } catch (e) {
+      print("Error retrieving metadata: $e");
+      return Metadata(); // Return empty metadata if an error occurs
     }
   }
 
@@ -146,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
             duration: _duration,
             position: _position,
             onPlayOrPause: _playOrPause,
-            isRepeat: _isRepeatFunction,
+            isRepeat: _toggleRepeat,
             isRepeating: _isRepeat,
           ),
           ProfileScreen(
@@ -183,5 +186,17 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
     );
+  }
+
+  void _toggleRepeat(bool repeat) {
+    setState(() {
+      _isRepeat = repeat;
+    });
+  }
+
+  @override
+  void dispose() {
+    audioPlayer.dispose();
+    super.dispose();
   }
 }

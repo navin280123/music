@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
 import 'dart:io';
@@ -6,8 +7,13 @@ import 'package:music/MainScreen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -96,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void navigateToMainScreen() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => MainScreen(audioFiles: audioFiles),
+        builder: (context) => MainScreen(audioFiles: audioFiles.map((file) => file.path).toList()),
       ),
     );
   }

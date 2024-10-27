@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 
-import 'package:music/Notification.dart';
+import 'package:just_audio/just_audio.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -37,9 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // Add listener for when the audio completes
-    widget.audioPlayer.onPlayerComplete.listen((event) {
+    widget.audioPlayer.playerStateStream.listen((event) {
+      if (event.processingState == ProcessingState.completed) {
       _onSongComplete();
-      NotificationServices().initNotification();
+      }
     });
   }
 

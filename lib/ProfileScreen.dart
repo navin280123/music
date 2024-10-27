@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -35,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    widget.audioPlayer.onPositionChanged.listen((position) {
+    widget.audioPlayer.positionStream.listen((position) {
       setState(() {
         sliderValue = position.inSeconds.toDouble();
       });
@@ -370,9 +370,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? "$hours:$minutes:$seconds"
         : "$minutes:$seconds";
   }
+
   Future<void> _launchUrl(Uri url) async {
-  if (!await launchUrl(url)) {
-    throw Exception('Could not launch $url');
+    if (!await launchUrl(url)) {
+      throw Exception('Could not launch $url');
+    }
   }
-}
 }
