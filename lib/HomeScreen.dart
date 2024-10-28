@@ -10,8 +10,10 @@ class HomeScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final bool isRepeat;
-  final Function(int, String,bool,bool) onPlayOrPause;
+  final Function() onPlayOrPause;
+  final Function() onNext;
+  final Function() onPrevious;
+  final Function(int) playTrack;
 
   const HomeScreen({
     super.key,
@@ -22,7 +24,9 @@ class HomeScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
-    required this.isRepeat,
+    required this.onNext,
+    required this.onPrevious,
+    required this.playTrack,
   });
 
   @override
@@ -30,34 +34,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool showBottomSheet = false;
 
   @override
   void initState() {
     super.initState();
     // Add listener for when the audio completes
-    widget.audioPlayer.playerStateStream.listen((event) {
-      if (event.processingState == ProcessingState.completed) {
-      _onSongComplete();
-      }
-    });
-  }
-
-  void _onSongComplete() {
-    print("this method is called");
-    // Move to the next song when the current song completes
-    if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! < widget.audioFiles.length - 1 && widget.isRepeat == false) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-          widget.audioFiles[widget.currentlyPlayingIndex! + 1].path, widget.isRepeat, false);
-    } else if (widget.isRepeat == true) {
-      print("this repeat method is called");
-      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-          widget.audioFiles[widget.currentlyPlayingIndex!].path, widget.isRepeat, false);
-    } else if (widget.currentlyPlayingIndex != null &&
-        widget.currentlyPlayingIndex! == widget.audioFiles.length - 1) {
-      widget.onPlayOrPause(0, widget.audioFiles[0].path, widget.isRepeat, false);
-    }
   }
 
   @override
@@ -65,8 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.deepPurple,
       body: ListView.builder(
-        padding: EdgeInsets.only(
-            bottom: widget.isPlaying ? 70.0 : 0.0),
+        padding: EdgeInsets.only(bottom: widget.isPlaying ? 70.0 : 0.0),
         itemCount: widget.audioFiles.length,
         itemBuilder: (context, index) {
           return _buildMusicTile(widget.audioFiles[index], index);
@@ -103,10 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         onTap: () {
-          widget.onPlayOrPause(index, file.path,widget.isRepeat,true);
-          setState(() {
-            showBottomSheet = true;
-          });
+          widget.onPlayOrPause();
         },
         trailing: IconButton(
           icon: Icon(isPlayingCurrent
@@ -115,10 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
           color: isPlayingCurrent ? Colors.lightBlueAccent : Colors.white70,
           iconSize: 36.0,
           onPressed: () {
-            widget.onPlayOrPause(index, file.path,widget.isRepeat,true);
-            setState(() {
-              showBottomSheet = true;
-            });
+            widget.playTrack(index);
           },
         ),
       ),
@@ -186,9 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white,
                 size: 30.0,
               ),
-              onPressed: () => widget.onPlayOrPause(
-                  widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true),
+              onPressed: () => widget.onPlayOrPause(),
             ),
             IconButton(
               icon: Icon(
@@ -205,36 +177,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      if (widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-        widget.onPlayOrPause(widget.currentlyPlayingIndex! + 1,
-            widget.audioFiles[widget.currentlyPlayingIndex! + 1].path, widget.isRepeat, true);
-      } else {
-        widget.onPlayOrPause(0, widget.audioFiles[0].path, widget.isRepeat, true);
-      }
-    }
+    widget.onNext();
   }
 
   void onDownSwipe() {
-    if (widget.isPlaying) {
-      widget.onPlayOrPause(widget.currentlyPlayingIndex!,
-          widget.audioFiles[widget.currentlyPlayingIndex!].path,widget.isRepeat,true);
-    }
-    setState(() {
-      showBottomSheet = false;
-    });
+    widget.onPlayOrPause();
   }
 
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      if (widget.currentlyPlayingIndex! > 0) {
-        widget.onPlayOrPause(widget.currentlyPlayingIndex! - 1,
-            widget.audioFiles[widget.currentlyPlayingIndex! - 1].path, widget.isRepeat, true);
-      } else {
-        widget.onPlayOrPause(widget.audioFiles.length - 1,
-            widget.audioFiles[widget.audioFiles.length - 1].path, widget.isRepeat, true);
-      }
-    }
+    widget.onPrevious();
   }
 
   String _formatDuration(Duration duration) {

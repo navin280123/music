@@ -5,14 +5,14 @@ import 'package:just_audio/just_audio.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
-  final Function(int, String,bool,bool) onPlayOrPause;
+  final Function(int) playTrack;
   final AudioPlayer audioPlayer;
 
   const SearchScreen({
     super.key,
     required this.audioFiles,
-    required this.onPlayOrPause,
     required this.audioPlayer,
+    required this.playTrack,
   });
 
   @override
@@ -75,13 +75,13 @@ class _SearchScreenState extends State<SearchScreen> {
               overflow: TextOverflow.ellipsis, // Add this line to ensure single line display
             ),
             onTap: () {
-              widget.onPlayOrPause(originalIndex, file.path,false,true);
+              widget.playTrack(originalIndex);
               Navigator.pop(context);
             },
             trailing: IconButton(
               icon: const Icon(Icons.play_arrow, color: Color.fromARGB(255, 190, 152, 254)),
               onPressed: () {
-          widget.onPlayOrPause(originalIndex, file.path,false,true);
+          widget.playTrack(originalIndex,);
           Navigator.pop(context);
               },
             ),

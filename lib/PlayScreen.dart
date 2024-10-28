@@ -8,9 +8,12 @@ class PlayScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String, bool, bool) onPlayOrPause;
-  final Function(bool) isRepeat;
-  final bool isRepeating;
+  final bool isRepeat;
+  final Function() onPlayOrPause;
+  final Function() onNext;
+  final Function() onPrevious;
+  final Function(int) playTrack;
+  final Function() toggleRepeat;
 
   const PlayScreen({
     super.key,
@@ -21,8 +24,11 @@ class PlayScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
+    required this.onNext,
+    required this.onPrevious,
+    required this.playTrack,
+    required this.toggleRepeat,
     required this.isRepeat,
-    required this.isRepeating,
   });
 
   @override
@@ -114,11 +120,8 @@ class _PlayScreenState extends State<PlayScreen>
                         InkWell(
                           borderRadius: BorderRadius.circular(10),
                           onTap: () {
-                            widget.onPlayOrPause(
-                              index,
-                              widget.audioFiles[index].path,
-                              widget.isRepeating,
-                              true,
+                            widget.playTrack(
+                              index
                             );
                             Navigator.pop(context);
                           },
@@ -294,12 +297,12 @@ class _PlayScreenState extends State<PlayScreen>
                         children: [
                           IconButton(
                             icon: Icon(
-                              widget.isRepeating ? Icons.repeat : Icons.shuffle,
+                              widget.isRepeat ? Icons.repeat : Icons.shuffle,
                               size: MediaQuery.of(context).size.width * 0.06,
                               color: Colors.white,
                             ),
                             onPressed: () {
-                              widget.isRepeat(!widget.isRepeating);
+                              widget.toggleRepeat();
                             },
                           ),
                           IconButton(
@@ -319,14 +322,7 @@ class _PlayScreenState extends State<PlayScreen>
                               color: Colors.white,
                             ),
                             onPressed: widget.currentlyPlayingIndex != null
-                                ? () => widget.onPlayOrPause(
-                                    widget.currentlyPlayingIndex!,
-                                    widget
-                                        .audioFiles[
-                                            widget.currentlyPlayingIndex!]
-                                        .path,
-                                    widget.isRepeating,
-                                    true)
+                                ? () => widget.onPlayOrPause()
                                 : null,
                           ),
                           IconButton(
@@ -359,40 +355,10 @@ class _PlayScreenState extends State<PlayScreen>
   }
 
   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      if (widget.currentlyPlayingIndex! < widget.audioFiles.length - 1) {
-        widget.onPlayOrPause(
-            widget.currentlyPlayingIndex! + 1,
-            widget.audioFiles[widget.currentlyPlayingIndex! + 1].path,
-            widget.isRepeating,
-            true);
-      } else {
-        // If the current song is the last one, play the first song
-        widget.onPlayOrPause(
-            0,
-            widget.audioFiles[0].path,
-            widget.isRepeating,
-            true);
-      }
-    }
+    widget.onNext();
   }
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      if (widget.currentlyPlayingIndex! > 0) {
-        widget.onPlayOrPause(
-            widget.currentlyPlayingIndex! - 1,
-            widget.audioFiles[widget.currentlyPlayingIndex! - 1].path,
-            widget.isRepeating,
-            true);
-      } else {
-        // If the current song is the first one, play the last song
-        widget.onPlayOrPause(
-            widget.audioFiles.length - 1,
-            widget.audioFiles[widget.audioFiles.length - 1].path,
-            widget.isRepeating,
-            true);
-      }
-    }
+    widget.onPrevious();
   }
 
   String _formatDuration(Duration duration) {

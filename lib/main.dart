@@ -8,12 +8,15 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: true,
   );
-  runApp(MyApp());
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -43,78 +46,59 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   bool loading = true;
   List<FileSystemEntity> audioFiles = [];
-  bool filesLoaded = false;
-  bool minSplashTimeElapsed = false;
   late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-    startTimers();
-    requestPermissionAndLoadFiles();
-    
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(); // Smoothly loop the animation
+    )..repeat();
+
+    startAppSetup();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<void> startAppSetup() async {
+    await _waitForSplashTime();
+    await _requestPermissionAndLoadFiles();
+    navigateToMainScreenIfReady();
   }
 
-  void startTimers() {
-    Timer(const Duration(milliseconds: 4700), () {
-      setState(() {
-        minSplashTimeElapsed = true;
-      });
-      if (filesLoaded) {
-        navigateToMainScreen();
-      }
+  Future<void> _waitForSplashTime() async {
+    await Future.delayed(const Duration(seconds: 4));
+  }
+
+  Future<void> _requestPermissionAndLoadFiles() async {
+    if (await Permission.storage.isGranted || await Permission.storage.request().isGranted) {
+      audioFiles = await _fetchAudioFiles();
+    } else {
+      print("Storage permission denied.");
+    }
+    setState(() {
+      loading = false;
     });
   }
 
-  Future<void> requestPermissionAndLoadFiles() async {
-    var status = await Permission.storage.request();
-
-    if (status.isGranted) {
-      List<FileSystemEntity> files = await _fetchAudioFiles();
-      setState(() {
-        audioFiles = files;
-        filesLoaded = true;
-      });
-
-      if (minSplashTimeElapsed) {
-        navigateToMainScreen();
-      }
-    } else {
-      print("Storage permission denied");
-      setState(() {
-        loading = false;
-        filesLoaded = true;
-      });
-    }
-  }
-
-  void navigateToMainScreen() {
+  void navigateToMainScreenIfReady() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => MainScreen(audioFiles: audioFiles.map((file) => file.path).toList()),
+        builder: (context) => MainScreen(
+          audioFiles: audioFiles.map((file) => file.path).toList(),
+        ),
       ),
     );
   }
 
   Future<List<FileSystemEntity>> _fetchAudioFiles() async {
-    List<FileSystemEntity> audioFiles = [];
+    List<FileSystemEntity> files = [];
     Directory? musicDir = await getExternalStorageDirectory();
+
     if (musicDir != null) {
-      audioFiles.addAll(_getFilesFromDirectory(musicDir, '.mp3'));
+      files.addAll(_getFilesFromDirectory(musicDir, '.mp3'));
     }
 
-    List<String> directoriesToSearch = [
+    const directoriesToSearch = [
       '/storage/emulated/0/Music',
       '/storage/emulated/0/Download',
       '/storage/emulated/0/DCIM',
@@ -123,26 +107,29 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       '/storage/sdcard1/DCIM'
     ];
 
-    for (String path in directoriesToSearch) {
+    for (final path in directoriesToSearch) {
       Directory dir = Directory(path);
       if (dir.existsSync()) {
-        audioFiles.addAll(_getFilesFromDirectory(dir, '.mp3'));
+        files.addAll(_getFilesFromDirectory(dir, '.mp3'));
       }
     }
 
-    return audioFiles;
+    return files;
   }
 
   List<FileSystemEntity> _getFilesFromDirectory(Directory dir, String extension) {
-    List<FileSystemEntity> files = [];
     try {
-      files = dir.listSync(recursive: true).where((file) {
-        return file.path.endsWith(extension);
-      }).toList();
+      return dir.listSync(recursive: true).where((file) => file.path.endsWith(extension)).toList();
     } catch (e) {
-      print("Error while accessing directory: $e");
+      print("Error accessing directory ${dir.path}: $e");
+      return [];
     }
-    return files;
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -159,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 fit: BoxFit.cover,
               )
             : const Text(
-                'Loading complete!',
+                '',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
       ),

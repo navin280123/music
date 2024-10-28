@@ -9,8 +9,10 @@ class ProfileScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function(int, String, bool, bool) onPlayOrPause;
-  final bool isRepeat;
+  final Function() onPlayOrPause;
+  final Function() onNext;
+  final Function() onPrevious;
+  final Function(int) playTrack;
 
   const ProfileScreen({
     super.key,
@@ -21,7 +23,9 @@ class ProfileScreen extends StatefulWidget {
     required this.position,
     required this.isPlaying,
     required this.onPlayOrPause,
-    required this.isRepeat,
+    required this.onNext,
+    required this.onPrevious,
+    required this.playTrack,
   });
 
   @override
@@ -309,11 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Colors.white,
                 size: 30.0,
               ),
-              onPressed: () => widget.onPlayOrPause(
-                  widget.currentlyPlayingIndex!,
-                  widget.audioFiles[widget.currentlyPlayingIndex!].path,
-                  widget.isRepeat,
-                  true),
+              onPressed: () => widget.onPlayOrPause(),
             ),
             IconButton(
               icon: Icon(
@@ -330,34 +330,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void onNextSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      int nextIndex =
-          (widget.currentlyPlayingIndex! + 1) % widget.audioFiles.length;
-      widget.onPlayOrPause(
-          nextIndex, widget.audioFiles[nextIndex].path, widget.isRepeat, true);
-    }
+    widget.onNext();
   }
 
   void onPreviousSong() {
-    if (widget.currentlyPlayingIndex != null) {
-      int prevIndex = widget.currentlyPlayingIndex! - 1;
-      if (prevIndex < 0) prevIndex = widget.audioFiles.length - 1;
-      widget.onPlayOrPause(
-          prevIndex, widget.audioFiles[prevIndex].path, widget.isRepeat, true);
-    }
+    widget.onPrevious();
   }
 
   void onDownSwipe() {
-    if (widget.isPlaying) {
-      widget.onPlayOrPause(
-          widget.currentlyPlayingIndex!,
-          widget.audioFiles[widget.currentlyPlayingIndex!].path,
-          widget.isRepeat,
-          true);
-    }
-    setState(() {
-      showBottomSheet = false;
-    });
+    widget.onPlayOrPause();
   }
 
   String _formatDuration(Duration duration) {
