@@ -30,7 +30,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool showBottomSheet = true;
+  bool showBottomSheet = false;
 
   @override
   void initState() {

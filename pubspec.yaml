@@ -40,7 +40,6 @@ dependencies:
   url_launcher: ^6.3.1
   just_audio_background: ^0.0.1-beta.13
   just_audio: ^0.9.4
-  flutter_media_metadata: ^1.0.0+1
 
 dev_dependencies:
   flutter_test:
