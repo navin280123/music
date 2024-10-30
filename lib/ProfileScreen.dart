@@ -36,7 +36,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   double sliderValue = 0;
-  bool showBottomSheet = false;
+  bool showBottomSheet = true;
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-      bottomSheet: showBottomSheet ? _buildNowPlayingBar() : null,
+      bottomSheet: showBottomSheet || widget.isPlaying ? _buildNowPlayingBar() : null,
     );
   }
 
