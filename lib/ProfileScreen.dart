@@ -14,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
   final Function() onNext;
   final Function() onPrevious;
   final Function(int) playTrack;
+  final Function(int) onTabTapped;
 
   const ProfileScreen({
     super.key,
@@ -28,6 +29,7 @@ class ProfileScreen extends StatefulWidget {
     required this.onNext,
     required this.onPrevious,
     required this.playTrack,
+    required this.onTabTapped,
   });
 
   @override
@@ -264,6 +266,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (details.primaryVelocity! > 0) {
           onDownSwipe();
         }
+      },
+      onTap: () {
+        // Handle bar click event here
+        widget.onTabTapped(1);
       },
       child: Container(
         decoration: BoxDecoration(

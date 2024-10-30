@@ -14,6 +14,7 @@ Future<void> main() async {
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: true,
+    androidNotificationIcon: 'drawable/play',
   );
 
   runApp(const MyApp());
@@ -53,8 +54,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000),
-    )..repeat();
+      duration: const Duration(milliseconds: 5000),
+    );
 
     startAppSetup();
   }

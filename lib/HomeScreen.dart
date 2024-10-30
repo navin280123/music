@@ -15,21 +15,22 @@ class HomeScreen extends StatefulWidget {
   final Function() onNext;
   final Function() onPrevious;
   final Function(int) playTrack;
+  final Function(int) onTabTapped;
 
-  const HomeScreen({
-    super.key,
-    required this.audioFiles,
-    required this.audioPlayer,
-    required this.currentlyPlayingIndex,
-    required this.duration,
-    required this.position,
-    required this.isPlaying,
-    required this.onPlay,
-    required this.onPause,
-    required this.onNext,
-    required this.onPrevious,
-    required this.playTrack,
-  });
+  const HomeScreen(
+      {super.key,
+      required this.audioFiles,
+      required this.audioPlayer,
+      required this.currentlyPlayingIndex,
+      required this.duration,
+      required this.position,
+      required this.isPlaying,
+      required this.onPlay,
+      required this.onPause,
+      required this.onNext,
+      required this.onPrevious,
+      required this.playTrack,
+      required this.onTabTapped});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -116,6 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
         if (details.primaryVelocity! > 0) {
           onDownSwipe();
         }
+      },
+      onTap: () {
+        // Handle bar click event here
+        widget.onTabTapped(1);
       },
       child: Container(
         decoration: BoxDecoration(

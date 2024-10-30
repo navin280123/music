@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 import 'package:music/SearchScreen.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MainScreen extends StatefulWidget {
   final List<String> audioFiles;
@@ -44,43 +46,65 @@ class _MainScreenState extends State<MainScreen> {
       });
     });
     audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed && !_isRepeat) {
-        _nextTrack();
-      }
-    });
-    audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed && _isRepeat) {
-        _repeatTrack();
+      setState(() {
+        _isPlaying = state.playing;
+      });
+      if (state.processingState == ProcessingState.completed) {
+        if (_isRepeat) {
+          playSong(_currentlyPlayingIndex!);
+        } else {
+          _nextTrack();
+        }
       }
     });
   }
 
   Future<void> playSong(int index) async {
-    print("Playing song at index: $index");
     if (index < 0 || index >= widget.audioFiles.length) return;
 
-    final path = widget.audioFiles[index];
-    final metadata = _fetchMetadataFromPath(path);
+    try {
+      final path = widget.audioFiles[index];
+      final metadata = _fetchMetadataFromPath(path);
+      final artUri = await _loadAssetAsFileUri('assets/music.png');
 
-    setState(() {
-      print("Setting state");
-      _currentlyPlayingIndex = index;
-      _isPlaying = true;
-    });
+      setState(() {
+        _currentlyPlayingIndex = index;
+        _isPlaying = true;
+      });
 
-    await audioPlayer.setAudioSource(
-      AudioSource.uri(
-        Uri.file(path),
-        tag: MediaItem(
-          id: '$index',
-          album: metadata['album'] ?? "Unknown Album",
-          title: metadata['title'] ?? "Unknown Title",
-          artist: metadata['artist'] ?? "Unknown Artist",
-          artUri: Uri.parse('asset:///assets/music.png'),
+      await audioPlayer.setAudioSource(
+        AudioSource.uri(
+          Uri.file(path),
+          tag: MediaItem(
+            id: '$index',
+            album: metadata['album'] ?? "Unknown Album",
+            title: metadata['title'] ?? "Unknown Title",
+            artist: metadata['artist'] ?? "Unknown Artist",
+            artUri: artUri,
+          ),
         ),
-      ),
-    );
-    await audioPlayer.play();
+      );
+
+      await audioPlayer.play();
+    } catch (e) {
+      print("Error playing song: $e");
+    }
+  }
+
+  Future<Uri> _loadAssetAsFileUri(String assetPath) async {
+    try {
+      final byteData = await rootBundle.load(assetPath);
+      final bytes = byteData.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/temp_music_art.png')
+          .writeAsBytes(bytes);
+
+      return file.uri;
+    } catch (e) {
+      print("Error loading asset: $e");
+      return Uri();
+    }
   }
 
   Future<void> play() async {
@@ -133,12 +157,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  void _repeatTrack() {
-    if (_isRepeat && _currentlyPlayingIndex != null) {
-      playSong(_currentlyPlayingIndex!);
-    }
-  }
-
   void _openSearchScreen() {
     Navigator.push(
       context,
@@ -184,6 +202,7 @@ class _MainScreenState extends State<MainScreen> {
             onNext: _nextTrack,
             onPrevious: _previousTrack,
             playTrack: playSong,
+            onTabTapped : _onTabTapped,
           ),
           PlayScreen(
             audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
@@ -212,26 +231,21 @@ class _MainScreenState extends State<MainScreen> {
             onNext: _nextTrack,
             onPrevious: _previousTrack,
             playTrack: playSong,
+            onTabTapped: _onTabTapped,
           ),
         ],
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          BottomNavigationBar(
-            backgroundColor: Colors.deepPurple,
-            currentIndex: _currentIndex,
-            onTap: _onTabTapped,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: const Color.fromARGB(255, 35, 35, 35),
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.play_circle_fill), label: 'Play'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profile'),
-            ],
-          ),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.deepPurple,
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: const Color.fromARGB(255, 35, 35, 35),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.play_circle_fill), label: 'Play'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
