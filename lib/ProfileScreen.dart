@@ -9,7 +9,8 @@ class ProfileScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function() onPlayOrPause;
+  final Function() onPlay;
+  final Function() onPause;
   final Function() onNext;
   final Function() onPrevious;
   final Function(int) playTrack;
@@ -22,7 +23,8 @@ class ProfileScreen extends StatefulWidget {
     required this.duration,
     required this.position,
     required this.isPlaying,
-    required this.onPlayOrPause,
+    required this.onPlay,
+    required this.onPause,
     required this.onNext,
     required this.onPrevious,
     required this.playTrack,
@@ -34,7 +36,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   double sliderValue = 0;
-  bool showBottomSheet = true;
+  bool showBottomSheet = false;
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.deepPurple,
       body: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: widget.isPlaying ? 80.0 : 0.0),
+        physics: BouncingScrollPhysics(),
         child: Column(
           children: [
             _buildProfileHeader(),
@@ -61,7 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
+      bottomSheet: showBottomSheet ? _buildNowPlayingBar() : null,
     );
   }
 
@@ -313,7 +316,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Colors.white,
                 size: 30.0,
               ),
-              onPressed: () => widget.onPlayOrPause(),
+              onPressed: () =>
+                  widget.isPlaying ? widget.onPause() : widget.onPlay(),
             ),
             IconButton(
               icon: Icon(
@@ -338,7 +342,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void onDownSwipe() {
-    widget.onPlayOrPause();
+    showBottomSheet = false;
+    widget.onPause();
   }
 
   String _formatDuration(Duration duration) {

@@ -9,7 +9,8 @@ class PlayScreen extends StatefulWidget {
   final Duration position;
   final bool isPlaying;
   final bool isRepeat;
-  final Function() onPlayOrPause;
+  final Function() onPlay;
+  final Function() onPause;
   final Function() onNext;
   final Function() onPrevious;
   final Function(int) playTrack;
@@ -23,12 +24,13 @@ class PlayScreen extends StatefulWidget {
     required this.duration,
     required this.position,
     required this.isPlaying,
-    required this.onPlayOrPause,
+    required this.onPlay,
+    required this.onPause,
     required this.onNext,
     required this.onPrevious,
     required this.playTrack,
     required this.toggleRepeat,
-    required this.isRepeat,
+    required this.isRepeat, 
   });
 
   @override
@@ -322,7 +324,9 @@ class _PlayScreenState extends State<PlayScreen>
                               color: Colors.white,
                             ),
                             onPressed: widget.currentlyPlayingIndex != null
-                                ? () => widget.onPlayOrPause()
+                                ? () => widget.isPlaying
+                                    ? widget.onPause()
+                                    : widget.onPlay()
                                 : null,
                           ),
                           IconButton(

@@ -10,7 +10,8 @@ class HomeScreen extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final bool isPlaying;
-  final Function() onPlayOrPause;
+  final Function() onPlay;
+  final Function() onPause;
   final Function() onNext;
   final Function() onPrevious;
   final Function(int) playTrack;
@@ -23,7 +24,8 @@ class HomeScreen extends StatefulWidget {
     required this.duration,
     required this.position,
     required this.isPlaying,
-    required this.onPlayOrPause,
+    required this.onPlay,
+    required this.onPause,
     required this.onNext,
     required this.onPrevious,
     required this.playTrack,
@@ -34,7 +36,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
+  bool bottombar = false;
   @override
   void initState() {
     super.initState();
@@ -52,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return _buildMusicTile(widget.audioFiles[index], index);
         },
       ),
-      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
+      bottomSheet: bottombar ? _buildNowPlayingBar() : null,
     );
   }
 
@@ -83,7 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         onTap: () {
-          widget.onPlayOrPause();
+          widget.playTrack(index);
+          bottombar = true;
         },
         trailing: IconButton(
           icon: Icon(isPlayingCurrent
@@ -92,7 +95,12 @@ class _HomeScreenState extends State<HomeScreen> {
           color: isPlayingCurrent ? Colors.lightBlueAccent : Colors.white70,
           iconSize: 36.0,
           onPressed: () {
-            widget.playTrack(index);
+            if (isPlayingCurrent) {
+              widget.onPause();
+            } else {
+              widget.playTrack(index);
+              bottombar = true;
+            }
           },
         ),
       ),
@@ -160,7 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white,
                 size: 30.0,
               ),
-              onPressed: () => widget.onPlayOrPause(),
+              onPressed: () =>
+                  widget.isPlaying ? widget.onPause() : widget.onPlay(),
             ),
             IconButton(
               icon: Icon(
@@ -181,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void onDownSwipe() {
-    widget.onPlayOrPause();
+    widget.onPause();
+    bottombar = false;
   }
 
   void onPreviousSong() {

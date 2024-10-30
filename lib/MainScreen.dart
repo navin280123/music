@@ -54,28 +54,19 @@ class _MainScreenState extends State<MainScreen> {
       }
     });
   }
-  Future<void> _playOrPause() async {
-    if (_isPlaying) {
-      await audioPlayer.pause();
-      setState(() {
-        _isPlaying = false;
-      });
-    } else {
-      if (_currentlyPlayingIndex == null) {
-        await _playTrack(0);
-      } else {
-        await audioPlayer.play();
-        setState(() {
-          _isPlaying = true;
-        });
-      }
-    }
-  }
 
-  Future<void> _playTrack(int index) async {
+  Future<void> playSong(int index) async {
+    print("Playing song at index: $index");
     if (index < 0 || index >= widget.audioFiles.length) return;
+
     final path = widget.audioFiles[index];
     final metadata = _fetchMetadataFromPath(path);
+
+    setState(() {
+      print("Setting state");
+      _currentlyPlayingIndex = index;
+      _isPlaying = true;
+    });
 
     await audioPlayer.setAudioSource(
       AudioSource.uri(
@@ -90,22 +81,34 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
     await audioPlayer.play();
+  }
+
+  Future<void> play() async {
+    if (_currentlyPlayingIndex != null) {
+      setState(() {
+        _isPlaying = true;
+      });
+      await audioPlayer.play();
+    }
+  }
+
+  Future<void> pause() async {
     setState(() {
-      _currentlyPlayingIndex = index;
-      _isPlaying = true;
+      _isPlaying = false;
     });
+    await audioPlayer.pause();
   }
 
   Future<void> _nextTrack() async {
     int nextIndex = (_currentlyPlayingIndex ?? 0) + 1;
     if (nextIndex >= widget.audioFiles.length) nextIndex = 0;
-    await _playTrack(nextIndex);
+    await playSong(nextIndex);
   }
 
   Future<void> _previousTrack() async {
     int previousIndex = (_currentlyPlayingIndex ?? 0) - 1;
     if (previousIndex < 0) previousIndex = widget.audioFiles.length - 1;
-    await _playTrack(previousIndex);
+    await playSong(previousIndex);
   }
 
   void _toggleRepeat() {
@@ -129,12 +132,13 @@ class _MainScreenState extends State<MainScreen> {
       _currentIndex = index;
     });
   }
+
   void _repeatTrack() {
     if (_isRepeat && _currentlyPlayingIndex != null) {
-      _playTrack(_currentlyPlayingIndex!);
+      playSong(_currentlyPlayingIndex!);
     }
-
   }
+
   void _openSearchScreen() {
     Navigator.push(
       context,
@@ -142,11 +146,12 @@ class _MainScreenState extends State<MainScreen> {
         builder: (context) => SearchScreen(
           audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
           audioPlayer: audioPlayer,
-          playTrack: _playTrack,
+          playTrack: playSong,
         ),
       ),
     );
   }
+
   String _formatDuration(Duration duration) {
     return duration.toString().split('.').first.padLeft(8, "0");
   }
@@ -172,25 +177,26 @@ class _MainScreenState extends State<MainScreen> {
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
-            onPlayOrPause: _playOrPause,
+            onPlay: play,
+            onPause: pause,
             duration: _duration,
             position: _position,
             onNext: _nextTrack,
             onPrevious: _previousTrack,
-            playTrack: _playTrack, 
-
+            playTrack: playSong,
           ),
           PlayScreen(
             audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
-            onPlayOrPause: _playOrPause,
+            onPlay: play,
+            onPause: pause,
             duration: _duration,
             position: _position,
             onNext: _nextTrack,
             onPrevious: _previousTrack,
-            playTrack: _playTrack,
+            playTrack: playSong,
             toggleRepeat: _toggleRepeat,
             isRepeat: _isRepeat,
           ),
@@ -199,13 +205,13 @@ class _MainScreenState extends State<MainScreen> {
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
-            onPlayOrPause: _playOrPause,
             duration: _duration,
             position: _position,
+            onPlay: play,
+            onPause: pause,
             onNext: _nextTrack,
             onPrevious: _previousTrack,
-            playTrack: _playTrack, 
-
+            playTrack: playSong,
           ),
         ],
       ),
@@ -220,8 +226,10 @@ class _MainScreenState extends State<MainScreen> {
             unselectedItemColor: const Color.fromARGB(255, 35, 35, 35),
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.play_circle_fill), label: 'Play'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.play_circle_fill), label: 'Play'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.person), label: 'Profile'),
             ],
           ),
         ],
