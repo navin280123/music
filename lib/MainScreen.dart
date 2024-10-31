@@ -25,37 +25,71 @@ class _MainScreenState extends State<MainScreen> {
   Duration _position = Duration.zero;
   bool _isPlaying = false;
   bool _isRepeat = false;
-
+  List<AudioSource> audioSources = [];
+  ConcatenatingAudioSource playlist = ConcatenatingAudioSource(children: []);
   final AudioPlayer audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
     _setupAudioPlayer();
+    _setupPlaylist();
+  }
+
+  void _setupPlaylist() async {
+    final artUri = await _loadAssetAsFileUri('assets/music.png');
+    audioSources = widget.audioFiles.map((filePath) {
+      final index = widget.audioFiles.indexOf(filePath);
+      final metadata = _fetchMetadataFromPath(filePath);
+      return AudioSource.uri(
+        Uri.file(filePath),
+        tag: MediaItem(
+          id: '$index',
+          album: metadata['album'] ?? "Unknown Album",
+          title: metadata['title'] ?? "Unknown Title",
+          artist: metadata['artist'] ?? "Unknown Artist",
+          artUri: artUri,
+        ),
+      );
+    }).toList();
+
+    playlist.addAll(audioSources);
   }
 
   void _setupAudioPlayer() {
+    // Listen to changes in audio duration
     audioPlayer.durationStream.listen((duration) {
       setState(() {
         _duration = duration ?? Duration.zero;
       });
     });
+
+    // Listen to changes in audio position
     audioPlayer.positionStream.listen((position) {
       setState(() {
         _position = position;
       });
     });
-    audioPlayer.playerStateStream.listen((state) {
-      setState(() {
-        _isPlaying = state.playing;
-      });
-      if (state.processingState == ProcessingState.completed) {
-        if (_isRepeat) {
-          playSong(_currentlyPlayingIndex!);
-        } else {
-          _nextTrack();
-        }
+
+    // Listen to player state changes
+    
+  audioPlayer.playerStateStream.listen((playerState) {
+    if (playerState.processingState == ProcessingState.completed) {
+      print("Song completed");
+      if (_isRepeat) {
+        audioPlayer.seek(Duration.zero, index: _currentlyPlayingIndex);
+        audioPlayer.play();
+      } else {
+        _nextTrack();
       }
+    }
+  });
+
+    // Listen to changes in the current track index
+    audioPlayer.currentIndexStream.listen((index) {
+      setState(() {
+        _currentlyPlayingIndex = index;
+      });
     });
   }
 
@@ -63,26 +97,15 @@ class _MainScreenState extends State<MainScreen> {
     if (index < 0 || index >= widget.audioFiles.length) return;
 
     try {
-      final path = widget.audioFiles[index];
-      final metadata = _fetchMetadataFromPath(path);
-      final artUri = await _loadAssetAsFileUri('assets/music.png');
-
       setState(() {
         _currentlyPlayingIndex = index;
         _isPlaying = true;
       });
 
       await audioPlayer.setAudioSource(
-        AudioSource.uri(
-          Uri.file(path),
-          tag: MediaItem(
-            id: '$index',
-            album: metadata['album'] ?? "Unknown Album",
-            title: metadata['title'] ?? "Unknown Title",
-            artist: metadata['artist'] ?? "Unknown Artist",
-            artUri: artUri,
-          ),
-        ),
+        playlist,
+        initialIndex: index,
+        initialPosition: Duration.zero,
       );
 
       await audioPlayer.play();
@@ -97,8 +120,8 @@ class _MainScreenState extends State<MainScreen> {
       final bytes = byteData.buffer.asUint8List();
 
       final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/temp_music_art.png')
-          .writeAsBytes(bytes);
+      final file =
+          await File('${tempDir.path}/temp_music_art.png').writeAsBytes(bytes);
 
       return file.uri;
     } catch (e) {
@@ -202,7 +225,7 @@ class _MainScreenState extends State<MainScreen> {
             onNext: _nextTrack,
             onPrevious: _previousTrack,
             playTrack: playSong,
-            onTabTapped : _onTabTapped,
+            onTabTapped: _onTabTapped,
           ),
           PlayScreen(
             audioFiles: widget.audioFiles.map((path) => File(path)).toList(),

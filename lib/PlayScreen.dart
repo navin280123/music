@@ -30,7 +30,7 @@ class PlayScreen extends StatefulWidget {
     required this.onPrevious,
     required this.playTrack,
     required this.toggleRepeat,
-    required this.isRepeat, 
+    required this.isRepeat,
   });
 
   @override
@@ -122,9 +122,7 @@ class _PlayScreenState extends State<PlayScreen>
                         InkWell(
                           borderRadius: BorderRadius.circular(10),
                           onTap: () {
-                            widget.playTrack(
-                              index
-                            );
+                            widget.playTrack(index);
                             Navigator.pop(context);
                           },
                           child: Card(
@@ -305,6 +303,10 @@ class _PlayScreenState extends State<PlayScreen>
                             ),
                             onPressed: () {
                               widget.toggleRepeat();
+                              widget.audioPlayer.setLoopMode(
+                                  widget.isRepeat
+                                      ? LoopMode.one
+                                      : LoopMode.off);
                             },
                           ),
                           IconButton(
@@ -361,6 +363,7 @@ class _PlayScreenState extends State<PlayScreen>
   void onNextSong() {
     widget.onNext();
   }
+
   void onPreviousSong() {
     widget.onPrevious();
   }
