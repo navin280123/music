@@ -297,16 +297,30 @@ class _PlayScreenState extends State<PlayScreen>
                         children: [
                           IconButton(
                             icon: Icon(
-                              widget.isRepeat ? Icons.repeat : Icons.shuffle,
+                              widget.audioPlayer.loopMode == LoopMode.all
+                                  ? Icons.repeat
+                                  : widget.audioPlayer.loopMode == LoopMode.one
+                                      ? Icons.repeat_one
+                                      : Icons.shuffle,
                               size: MediaQuery.of(context).size.width * 0.06,
                               color: Colors.white,
                             ),
                             onPressed: () {
-                              widget.toggleRepeat();
-                              widget.audioPlayer.setLoopMode(
-                                  widget.isRepeat
-                                      ? LoopMode.one
-                                      : LoopMode.off);
+                              if (widget.audioPlayer.loopMode == LoopMode.off) {
+                                // Switch to Shuffle mode
+                                widget.audioPlayer.setLoopMode(LoopMode.all);
+                                widget.audioPlayer.setShuffleModeEnabled(true);
+                              } else if (widget.audioPlayer.loopMode ==
+                                  LoopMode.all) {
+                                // Switch to Repeat One mode
+                                widget.audioPlayer.setLoopMode(LoopMode.one);
+                                widget.audioPlayer.setShuffleModeEnabled(false);
+                              } else if (widget.audioPlayer.loopMode ==
+                                  LoopMode.one) {
+                                // Switch to Repeat All mode
+                                widget.audioPlayer.setLoopMode(LoopMode.off);
+                              }
+                              setState(() {});
                             },
                           ),
                           IconButton(
