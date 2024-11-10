@@ -93,7 +93,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 Contact 📧
 
-Feel free to connect with me on [LinkedIn](nkedin.com/in/navin-kumar-verma/) for questions, suggestions, or just to connect!
+Feel free to connect with me on [LinkedIn](linkedin.com/in/navin-kumar-verma/) for questions, suggestions, or just to connect!
 
 
 ---
