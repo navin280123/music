@@ -53,103 +53,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: const Color(0xFF0F0B1E),
       body: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: widget.isPlaying ? 80.0 : 0.0),
-        physics: BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(
+          bottom: 20.0,
+          top: 12.0,
+        ),
+        physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
             _buildProfileHeader(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildDeveloperInfo(),
+            const SizedBox(height: 16),
             _buildAboutApp(),
           ],
         ),
       ),
-      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
     );
   }
 
   Widget _buildProfileHeader() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            elevation: 6.0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15.0),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF180F33),
+          borderRadius: BorderRadius.circular(22.0),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Column(
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC77DFF).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const CircleAvatar(
+                  radius: 46.0,
+                  backgroundImage: AssetImage('assets/profile.png'),
+                ),
+              ),
+              const SizedBox(height: 14.0),
+              const Text(
+                "Developer's Profile",
+                style: TextStyle(
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4.0),
+              Text(
+                "Pocketo Play Creator",
+                style: TextStyle(
+                  fontSize: 13.0,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  const CircleAvatar(
-                    radius: 50.0,
-                    backgroundImage: AssetImage('assets/profile.png'),
-                  ),
-                  const SizedBox(height: 12.0),
-                  const Text(
-                    "Developer's Profile",
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.deepPurple,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildSocialIcon(Icons.facebook, "Facebook"),
-                      _buildSocialIcon(Icons.camera_alt, "Instagram"),
-                      _buildSocialIcon(Icons.code, "GitHub"),
-                      _buildSocialIcon(Icons.work, "LinkedIn"),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      final Uri emailLaunchUri = Uri(
-                        scheme: 'mailto',
-                        path: 'Kumarnavinverma7@gmail.com',
-                        query: 'subject=App Feedback&body=Hello Navin,',
-                      );
-
-                      _launchUrl(emailLaunchUri);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 25.0, vertical: 12.0),
-                      child: const Text(
-                        'Contact Developer',
-                        style: TextStyle(fontSize: 16.0, color: Colors.white),
-                      ),
-                    ),
-                  ),
+                  _buildSocialIcon(Icons.facebook, "Facebook"),
+                  _buildSocialIcon(Icons.camera_alt, "Instagram"),
+                  _buildSocialIcon(Icons.code, "GitHub"),
+                  _buildSocialIcon(Icons.work, "LinkedIn"),
                 ],
               ),
-            ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7B2CBF), Color(0xFF9D4EDD)],
+                  ),
+                  borderRadius: BorderRadius.circular(20.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7B2CBF).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    final Uri emailLaunchUri = Uri(
+                      scheme: 'mailto',
+                      path: 'Kumarnavinverma7@gmail.com',
+                      query: 'subject=App Feedback&body=Hello Navin,',
+                    );
+
+                    _launchUrl(emailLaunchUri);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 12.0),
+                    child: Text(
+                      'Contact Developer',
+                      style: TextStyle(fontSize: 15.0, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildSocialIcon(IconData icon, String label) {
     return Column(
       children: [
-        IconButton(
-          icon: Icon(icon, color: Colors.deepPurple, size: 30),
-          onPressed: () => _showDialog(label),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: Icon(icon, color: const Color(0xFFC77DFF), size: 24),
+            onPressed: () => _showDialog(label),
+          ),
         ),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
       ],
     );
   }
@@ -179,29 +234,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildDeveloperInfo() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Card(
-        elevation: 6.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF180F33),
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(18.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 "Developer Information",
                 style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.deepPurple,
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-              const Divider(color: Colors.deepPurpleAccent),
-              const SizedBox(height: 8),
-              _buildInfoRow(Icons.person, "Navin Kumar Verma"),
-              _buildInfoRow(Icons.email, "Kumarnavinverma7@gmail.com"),
-              _buildInfoRow(Icons.description,
+              Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
+              _buildInfoRow(Icons.person_rounded, "Navin Kumar Verma"),
+              _buildInfoRow(Icons.email_rounded, "Kumarnavinverma7@gmail.com"),
+              _buildInfoRow(Icons.description_rounded,
                   "Flutter Developer with a passion for elegant applications."),
             ],
           ),
@@ -212,12 +270,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildInfoRow(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.deepPurple),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 16.0))),
+          Icon(icon, color: const Color(0xFFC77DFF), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14.0,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -226,29 +292,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAboutApp() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Card(
-        elevation: 6.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF180F33),
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1,
+          ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(18.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 "About this App",
                 style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.deepPurple,
+                  fontSize: 18.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-              const Divider(color: Colors.deepPurpleAccent),
-              const SizedBox(height: 8),
-              _buildInfoRow(Icons.apps, "App Name: Pocketo Play"),
-              _buildInfoRow(Icons.verified, "Version: 1.0.0"),
-              _buildInfoRow(Icons.description,
+              Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
+              _buildInfoRow(Icons.apps_rounded, "App Name: Pocketo Play"),
+              _buildInfoRow(Icons.verified_rounded, "Version: 1.0.0"),
+              _buildInfoRow(Icons.description_rounded,
                   "This app allows you to play audio files and manage playback with a sleek UI."),
             ],
           ),
@@ -257,111 +326,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildNowPlayingBar() {
-    String currentSong =
-        widget.audioFiles[widget.currentlyPlayingIndex!].path.split('/').last;
 
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        if (details.primaryVelocity! > 0) {
-          onDownSwipe();
-        }
-      },
-      onTap: () {
-        // Handle bar click event here
-        widget.onTabTapped(1);
-      },
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.deepPurpleAccent,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20.0),
-            topRight: Radius.circular(20.0),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        height: 70.0,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    currentSong,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4.0),
-                  Text(
-                    "${_formatDuration(widget.position)} / ${_formatDuration(widget.duration)}",
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 12.0),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.skip_previous,
-                color: Colors.white,
-                size: 20.0,
-              ),
-              onPressed: onPreviousSong,
-            ),
-            IconButton(
-              icon: Icon(
-                widget.isPlaying
-                    ? Icons.pause_circle_filled
-                    : Icons.play_circle_fill,
-                color: Colors.white,
-                size: 30.0,
-              ),
-              onPressed: () =>
-                  widget.isPlaying ? widget.onPause() : widget.onPlay(),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.skip_next,
-                color: Colors.white,
-                size: 20.0,
-              ),
-              onPressed: onNextSong,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void onNextSong() {
-    widget.onNext();
-  }
-
-  void onPreviousSong() {
-    widget.onPrevious();
-  }
-
-  void onDownSwipe() {
-    showBottomSheet = false;
-    widget.onPause();
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String hours = twoDigits(duration.inHours);
-    String minutes = twoDigits(duration.inMinutes.remainder(60));
-    String seconds = twoDigits(duration.inSeconds.remainder(60));
-
-    return duration.inHours > 0
-        ? "$hours:$minutes:$seconds"
-        : "$minutes:$seconds";
-  }
 
   Future<void> _launchUrl(Uri url) async {
     if (!await launchUrl(url)) {

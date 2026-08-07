@@ -25,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   Duration _position = Duration.zero;
   bool _isPlaying = false;
   bool _isRepeat = false;
+  bool _isMiniPlayerDismissed = false;
   List<AudioSource> audioSources = [];
   ConcatenatingAudioSource playlist = ConcatenatingAudioSource(children: []);
   final AudioPlayer audioPlayer = AudioPlayer();
@@ -100,6 +101,7 @@ class _MainScreenState extends State<MainScreen> {
       setState(() {
         _currentlyPlayingIndex = index;
         _isPlaying = true;
+        _isMiniPlayerDismissed = false;
       });
 
       await audioPlayer.setAudioSource(
@@ -197,18 +199,332 @@ class _MainScreenState extends State<MainScreen> {
     return duration.toString().split('.').first.padLeft(8, "0");
   }
 
+  Widget _buildMiniPlayerBar() {
+    if (_isMiniPlayerDismissed ||
+        _currentlyPlayingIndex == null ||
+        _currentlyPlayingIndex! < 0 ||
+        _currentlyPlayingIndex! >= widget.audioFiles.length) {
+      return const SizedBox.shrink();
+    }
+
+    // Hide mini player on Play screen (index 1) since full player is active
+    if (_currentIndex == 1) {
+      return const SizedBox.shrink();
+    }
+
+    final currentFilePath = widget.audioFiles[_currentlyPlayingIndex!];
+    final currentSong = currentFilePath.split(Platform.pathSeparator).last;
+
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity! > 0) {
+          setState(() {
+            _isMiniPlayerDismissed = true;
+          });
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 4.0),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F123F),
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(
+            color: const Color(0xFFC77DFF).withValues(alpha: 0.35),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: const Color(0xFF7B2CBF).withValues(alpha: 0.2),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20.0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20.0),
+            onTap: () {
+              _onTabTapped(1);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFC77DFF).withValues(alpha: 0.3),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.music_note_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          currentSong,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2.0),
+                        Text(
+                          "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 11.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(
+                      Icons.skip_previous_rounded,
+                      color: Colors.white,
+                      size: 22.0,
+                    ),
+                    onPressed: _previousTrack,
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      _isPlaying
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      color: const Color(0xFFC77DFF),
+                      size: 32.0,
+                    ),
+                    onPressed: () => _isPlaying ? pause() : play(),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(
+                      Icons.skip_next_rounded,
+                      color: Colors.white,
+                      size: 22.0,
+                    ),
+                    onPressed: _nextTrack,
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      size: 18.0,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isMiniPlayerDismissed = true;
+                      });
+                    },
+                    tooltip: 'Dismiss',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomBottomBar() {
+    final navItems = [
+      {'icon': Icons.home_rounded, 'label': 'Home'},
+      {'icon': Icons.play_arrow_rounded, 'label': 'Play'},
+      {'icon': Icons.person_rounded, 'label': 'Profile'},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20, top: 4),
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D123A),
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: const Color(0xFF7B2CBF).withValues(alpha: 0.25),
+            blurRadius: 10,
+            spreadRadius: -1,
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.12),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(navItems.length, (index) {
+          final isSelected = _currentIndex == index;
+          final item = navItems[index];
+
+          return GestureDetector(
+            onTap: () => _onTabTapped(index),
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSelected ? 18.0 : 12.0,
+                vertical: 8.0,
+              ),
+              decoration: isSelected
+                  ? BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B2CBF), Color(0xFF9D4EDD)],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF9D4EDD).withValues(alpha: 0.4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    )
+                  : const BoxDecoration(),
+              child: Row(
+                children: [
+                  Icon(
+                    item['icon'] as IconData,
+                    color: isSelected ? Colors.white : Colors.white54,
+                    size: isSelected ? 24 : 22,
+                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      item['label'] as String,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: const Text("Pocketo Play", style: TextStyle(color: Colors.white)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: _openSearchScreen,
+      backgroundColor: const Color(0xFF0F0B1E),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(62.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF180E30),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(20.0),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
           ),
-        ],
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7B2CBF).withValues(alpha: 0.4),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.graphic_eq_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Pocketo Play",
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14.0),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.search_rounded, color: Colors.white),
+                      onPressed: _openSearchScreen,
+                      tooltip: 'Search Music',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -258,17 +574,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.deepPurple,
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: const Color.fromARGB(255, 35, 35, 35),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.play_circle_fill), label: 'Play'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildMiniPlayerBar(),
+          _buildCustomBottomBar(),
         ],
       ),
     );
