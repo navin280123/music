@@ -30,7 +30,7 @@
         </intent>
     </queries>
     <application
-        android:label="music"
+        android:label="Pocketo Play"
         android:name="${applicationName}"
         android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"

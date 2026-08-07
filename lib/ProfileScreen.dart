@@ -246,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const Divider(color: Colors.deepPurpleAccent),
               const SizedBox(height: 8),
-              _buildInfoRow(Icons.apps, "App Name: Audio Player"),
+              _buildInfoRow(Icons.apps, "App Name: Pocketo Play"),
               _buildInfoRow(Icons.verified, "Version: 1.0.0"),
               _buildInfoRow(Icons.description,
                   "This app allows you to play audio files and manage playback with a sleek UI."),

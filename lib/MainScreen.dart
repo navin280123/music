@@ -202,7 +202,7 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.deepPurple,
-        title: const Text("Play Music", style: TextStyle(color: Colors.white)),
+        title: const Text("Pocketo Play", style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
