@@ -72,18 +72,18 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     // Listen to player state changes
-    
-  audioPlayer.playerStateStream.listen((playerState) {
-    if (playerState.processingState == ProcessingState.completed) {
-      print("Song completed");
-      if (_isRepeat) {
-        audioPlayer.seek(Duration.zero, index: _currentlyPlayingIndex);
-        audioPlayer.play();
-      } else {
-        _nextTrack();
+
+    audioPlayer.playerStateStream.listen((playerState) {
+      if (playerState.processingState == ProcessingState.completed) {
+        print("Song completed");
+        if (_isRepeat) {
+          audioPlayer.seek(Duration.zero, index: _currentlyPlayingIndex);
+          audioPlayer.play();
+        } else {
+          _nextTrack();
+        }
       }
-    }
-  });
+    });
 
     // Listen to changes in the current track index
     audioPlayer.currentIndexStream.listen((index) {

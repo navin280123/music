@@ -66,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-      bottomSheet:  widget.isPlaying ? _buildNowPlayingBar() : null,
+      bottomSheet: widget.isPlaying ? _buildNowPlayingBar() : null,
     );
   }
 
@@ -272,7 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         widget.onTabTapped(1);
       },
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.deepPurpleAccent,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(20.0),

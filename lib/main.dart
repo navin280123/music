@@ -71,10 +71,32 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _requestPermissionAndLoadFiles() async {
-    if (await Permission.storage.isGranted || await Permission.storage.request().isGranted) {
+    bool hasPermission = false;
+
+    if (await Permission.audio.isGranted ||
+        await Permission.storage.isGranted ||
+        await Permission.manageExternalStorage.isGranted) {
+      hasPermission = true;
+    } else {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.audio,
+        Permission.storage,
+      ].request();
+
+      if ((statuses[Permission.audio]?.isGranted ?? false) ||
+          (statuses[Permission.storage]?.isGranted ?? false)) {
+        hasPermission = true;
+      } else {
+        if (await Permission.manageExternalStorage.request().isGranted) {
+          hasPermission = true;
+        }
+      }
+    }
+
+    if (hasPermission) {
       audioFiles = await _fetchAudioFiles();
     } else {
-      print("Storage permission denied.");
+      print("Storage/Audio permission denied.");
     }
     setState(() {
       loading = false;
@@ -93,37 +115,69 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<List<FileSystemEntity>> _fetchAudioFiles() async {
     List<FileSystemEntity> files = [];
-    Directory? musicDir = await getExternalStorageDirectory();
+    Set<String> scannedPaths = {};
 
-    if (musicDir != null) {
-      files.addAll(_getFilesFromDirectory(musicDir, '.mp3'));
-    }
-
-    const directoriesToSearch = [
+    List<String> directoriesToSearch = [
+      '/storage/emulated/0',
       '/storage/emulated/0/Music',
       '/storage/emulated/0/Download',
+      '/storage/emulated/0/Downloads',
       '/storage/emulated/0/DCIM',
+      '/storage/emulated/0/Audio',
+      '/storage/emulated/0/Documents',
+      '/storage/emulated/0/WhatsApp/Media',
+      '/storage/emulated/0/Telegram',
+      '/storage/emulated/0/Bluetooth',
+      '/storage/sdcard1',
       '/storage/sdcard1/Music',
       '/storage/sdcard1/Download',
-      '/storage/sdcard1/DCIM'
     ];
+
+    Directory? musicDir = await getExternalStorageDirectory();
+    if (musicDir != null) {
+      directoriesToSearch.add(musicDir.path);
+    }
 
     for (final path in directoriesToSearch) {
       Directory dir = Directory(path);
-      if (dir.existsSync()) {
-        files.addAll(_getFilesFromDirectory(dir, '.mp3'));
+      if (dir.existsSync() && !scannedPaths.contains(dir.path)) {
+        _safeScanDirectory(dir, files, scannedPaths);
       }
     }
 
     return files;
   }
 
-  List<FileSystemEntity> _getFilesFromDirectory(Directory dir, String extension) {
+  void _safeScanDirectory(Directory dir, List<FileSystemEntity> results, Set<String> visitedDirs, {int depth = 0}) {
+    if (depth > 6) return;
+    if (!visitedDirs.add(dir.path)) return;
+
     try {
-      return dir.listSync(recursive: true).where((file) => file.path.endsWith(extension)).toList();
+      final List<FileSystemEntity> entities = dir.listSync(recursive: false);
+      for (final entity in entities) {
+        final path = entity.path;
+        final name = path.split(Platform.pathSeparator).last;
+        if (name.startsWith('.')) continue;
+
+        if (entity is File) {
+          final lowerPath = path.toLowerCase();
+          if (lowerPath.endsWith('.mp3') ||
+              lowerPath.endsWith('.m4a') ||
+              lowerPath.endsWith('.aac') ||
+              lowerPath.endsWith('.wav') ||
+              lowerPath.endsWith('.flac') ||
+              lowerPath.endsWith('.ogg') ||
+              lowerPath.endsWith('.opus')) {
+            results.add(entity);
+          }
+        } else if (entity is Directory) {
+          if (!path.endsWith('/Android/data') && !path.endsWith('/Android/obb')) {
+            _safeScanDirectory(entity, results, visitedDirs, depth: depth + 1);
+          }
+        }
+      }
     } catch (e) {
-      print("Error accessing directory ${dir.path}: $e");
-      return [];
+      print("Error scanning directory ${dir.path}: $e");
     }
   }
 
