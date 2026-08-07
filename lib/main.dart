@@ -190,20 +190,48 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: const Color(0xFF121212),
       body: Center(
-        child: loading
-            ? Lottie.asset(
-                'assets/music.json',
-                controller: _animationController,
-                width: 200,
-                height: 200,
-                fit: BoxFit.cover,
-              )
-            : const Text(
-                '',
-                style: TextStyle(color: Colors.white, fontSize: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            loading
+                ? Lottie.asset(
+                    'assets/music.json',
+                    controller: _animationController,
+                    width: 180,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(16.0),
+                    child: Image.asset(
+                      'assets/appicon.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+            const SizedBox(height: 24),
+            const Text(
+              'Pocketo Play',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
               ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your Personal Music Companion',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
