@@ -5,7 +5,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
-import 'package:music/ProfileScreen.dart';
+import 'package:music/SettingsScreen.dart';
 import 'package:music/SearchScreen.dart';
 import 'package:music/ArtworkHelper.dart';
 import 'package:path_provider/path_provider.dart';
@@ -347,7 +347,7 @@ class _MainScreenState extends State<MainScreen> {
     final navItems = [
       {'icon': Icons.home_rounded, 'label': 'Home'},
       {'icon': Icons.play_arrow_rounded, 'label': 'Play'},
-      {'icon': Icons.person_rounded, 'label': 'Profile'},
+      {'icon': Icons.settings_rounded, 'label': 'Settings'},
     ];
 
     return Container(
@@ -511,7 +511,7 @@ class _MainScreenState extends State<MainScreen> {
             toggleRepeat: _toggleRepeat,
             isRepeat: _isRepeat,
           ),
-          ProfileScreen(
+          SettingsScreen(
             audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
