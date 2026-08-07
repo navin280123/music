@@ -41,6 +41,7 @@ dependencies:
   just_audio_background: ^0.0.1-beta.13
   just_audio: ^0.9.4
   flutter_native_splash: ^2.4.1
+  audiotags: ^1.4.5
 
 dev_dependencies:
   flutter_test:

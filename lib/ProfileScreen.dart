@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1E),
+      backgroundColor: const Color(0xFF121212),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(
           bottom: 20.0,
@@ -78,17 +78,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF180F33),
-          borderRadius: BorderRadius.circular(22.0),
+          color: const Color(0xFF1C1C1E),
+          borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFF2C2C2E),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -97,18 +97,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
-                  ),
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFC77DFF).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                    ),
-                  ],
+                  border: Border.all(
+                    color: Colors.white24,
+                    width: 1.5,
+                  ),
                 ),
                 child: const CircleAvatar(
                   radius: 46.0,
@@ -119,17 +114,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Text(
                 "Developer's Profile",
                 style: TextStyle(
-                  fontSize: 22.0,
+                  fontSize: 21.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4.0),
-              Text(
+              const Text(
                 "Pocketo Play Creator",
                 style: TextStyle(
                   fontSize: 13.0,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: Colors.white54,
                 ),
               ),
               const SizedBox(height: 16),
@@ -143,43 +138,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF7B2CBF), Color(0xFF9D4EDD)],
-                  ),
-                  borderRadius: BorderRadius.circular(20.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7B2CBF).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    final Uri emailLaunchUri = Uri(
-                      scheme: 'mailto',
-                      path: 'Kumarnavinverma7@gmail.com',
-                      query: 'subject=App Feedback&body=Hello Navin,',
-                    );
+              ElevatedButton(
+                onPressed: () {
+                  final Uri emailLaunchUri = Uri(
+                    scheme: 'mailto',
+                    path: 'Kumarnavinverma7@gmail.com',
+                    query: 'subject=App Feedback&body=Hello Navin,',
+                  );
 
-                    _launchUrl(emailLaunchUri);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
+                  _launchUrl(emailLaunchUri);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2C2C2E),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 24.0, vertical: 12.0),
-                    child: Text(
-                      'Contact Developer',
-                      style: TextStyle(fontSize: 15.0, color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 12.0),
+                ),
+                child: const Text(
+                  'Contact Developer',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.0,
                   ),
                 ),
               ),
@@ -190,22 +173,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSocialIcon(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: Icon(icon, color: const Color(0xFFC77DFF), size: 24),
-            onPressed: () => _showDialog(label),
-          ),
+  Widget _buildSocialIcon(IconData icon, String platform) {
+    return GestureDetector(
+      onTap: () => _showDialog(platform),
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: const BoxDecoration(
+          color: Color(0xFF282828),
+          shape: BoxShape.circle,
         ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
-      ],
+        child: Icon(
+          icon,
+          color: Colors.white70,
+          size: 22.0,
+        ),
+      ),
     );
   }
 
@@ -236,10 +218,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF180F33),
+          color: const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFF2C2C2E),
             width: 1,
           ),
         ),
@@ -251,12 +233,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Text(
                 "Developer Information",
                 style: TextStyle(
-                  fontSize: 18.0,
+                  fontSize: 17.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
+              const Divider(color: Color(0xFF282828), height: 20),
               _buildInfoRow(Icons.person_rounded, "Navin Kumar Verma"),
               _buildInfoRow(Icons.email_rounded, "Kumarnavinverma7@gmail.com"),
               _buildInfoRow(Icons.description_rounded,
@@ -273,14 +255,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFFC77DFF), size: 20),
+          Icon(icon, color: Colors.white70, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14.0,
-                color: Colors.white.withValues(alpha: 0.85),
+                color: Colors.white70,
               ),
             ),
           ),
@@ -294,10 +276,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF180F33),
+          color: const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFF2C2C2E),
             width: 1,
           ),
         ),
@@ -309,12 +291,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const Text(
                 "About this App",
                 style: TextStyle(
-                  fontSize: 18.0,
+                  fontSize: 17.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
+              const Divider(color: Color(0xFF282828), height: 20),
               _buildInfoRow(Icons.apps_rounded, "App Name: Pocketo Play"),
               _buildInfoRow(Icons.verified_rounded, "Version: 1.0.0"),
               _buildInfoRow(Icons.description_rounded,

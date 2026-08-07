@@ -7,6 +7,7 @@ import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/ProfileScreen.dart';
 import 'package:music/SearchScreen.dart';
+import 'package:music/ArtworkHelper.dart';
 import 'package:path_provider/path_provider.dart';
 
 class MainScreen extends StatefulWidget {
@@ -207,7 +208,6 @@ class _MainScreenState extends State<MainScreen> {
       return const SizedBox.shrink();
     }
 
-    // Hide mini player on Play screen (index 1) since full player is active
     if (_currentIndex == 1) {
       return const SizedBox.shrink();
     }
@@ -224,31 +224,27 @@ class _MainScreenState extends State<MainScreen> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 4.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1F123F),
-          borderRadius: BorderRadius.circular(20.0),
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(16.0),
           border: Border.all(
-            color: const Color(0xFFC77DFF).withValues(alpha: 0.35),
+            color: const Color(0xFF2C2C2E),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 14,
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 10,
               offset: const Offset(0, 4),
-            ),
-            BoxShadow(
-              color: const Color(0xFF7B2CBF).withValues(alpha: 0.2),
-              blurRadius: 8,
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(16.0),
           child: InkWell(
-            borderRadius: BorderRadius.circular(20.0),
+            borderRadius: BorderRadius.circular(16.0),
             onTap: () {
               _onTabTapped(1);
             },
@@ -256,28 +252,13 @@ class _MainScreenState extends State<MainScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Row(
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFC77DFF).withValues(alpha: 0.3),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.music_note_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                  ArtworkHelper.buildArtworkWidget(
+                    currentFilePath,
+                    width: 42,
+                    height: 42,
+                    borderRadius: 8,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,17 +268,17 @@ class _MainScreenState extends State<MainScreen> {
                           currentSong,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2.0),
                         Text(
                           "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 11.0,
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 11.5,
                           ),
                         ),
                       ],
@@ -309,11 +290,11 @@ class _MainScreenState extends State<MainScreen> {
                     icon: const Icon(
                       Icons.skip_previous_rounded,
                       color: Colors.white,
-                      size: 22.0,
+                      size: 24.0,
                     ),
                     onPressed: _previousTrack,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 10),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -321,29 +302,29 @@ class _MainScreenState extends State<MainScreen> {
                       _isPlaying
                           ? Icons.pause_circle_filled_rounded
                           : Icons.play_circle_fill_rounded,
-                      color: const Color(0xFFC77DFF),
-                      size: 32.0,
+                      color: Colors.white,
+                      size: 34.0,
                     ),
                     onPressed: () => _isPlaying ? pause() : play(),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 10),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     icon: const Icon(
                       Icons.skip_next_rounded,
                       color: Colors.white,
-                      size: 22.0,
+                      size: 24.0,
                     ),
                     onPressed: _nextTrack,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.close_rounded,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white38,
                       size: 18.0,
                     ),
                     onPressed: () {
@@ -370,27 +351,22 @@ class _MainScreenState extends State<MainScreen> {
     ];
 
     return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20, top: 4),
-      height: 64,
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 4),
+      height: 60,
       decoration: BoxDecoration(
-        color: const Color(0xFF1D123A),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: const Color(0xFF7B2CBF).withValues(alpha: 0.25),
-            blurRadius: 10,
-            spreadRadius: -1,
-          ),
-        ],
+        color: const Color(0xFF1C1C1E),
+        borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.12),
+          color: const Color(0xFF2C2C2E),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -402,24 +378,16 @@ class _MainScreenState extends State<MainScreen> {
             onTap: () => _onTabTapped(index),
             behavior: HitTestBehavior.opaque,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 18.0 : 12.0,
+                horizontal: isSelected ? 16.0 : 12.0,
                 vertical: 8.0,
               ),
               decoration: isSelected
                   ? BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7B2CBF), Color(0xFF9D4EDD)],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF9D4EDD).withValues(alpha: 0.4),
-                          blurRadius: 10,
-                        ),
-                      ],
+                      color: const Color(0xFF2C2C2E),
+                      borderRadius: BorderRadius.circular(20),
                     )
                   : const BoxDecoration(),
               child: Row(
@@ -427,7 +395,7 @@ class _MainScreenState extends State<MainScreen> {
                   Icon(
                     item['icon'] as IconData,
                     color: isSelected ? Colors.white : Colors.white54,
-                    size: isSelected ? 24 : 22,
+                    size: 22,
                   ),
                   if (isSelected) ...[
                     const SizedBox(width: 8),
@@ -435,8 +403,8 @@ class _MainScreenState extends State<MainScreen> {
                       item['label'] as String,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
                       ),
                     ),
                   ],
@@ -452,25 +420,17 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1E),
+      backgroundColor: const Color(0xFF121212),
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(62.0),
+        preferredSize: const Size.fromHeight(60.0),
         child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF180E30),
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(20.0),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+          decoration: const BoxDecoration(
+            color: Color(0xFF181818),
+            border: Border(
+              bottom: BorderSide(
+                color: Color(0xFF282828),
+                width: 1.0,
               ),
-            ],
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 1,
             ),
           ),
           child: SafeArea(
@@ -478,47 +438,40 @@ class _MainScreenState extends State<MainScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF7B2CBF).withValues(alpha: 0.4),
-                          blurRadius: 8,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.asset(
+                      'assets/appicon.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 32,
+                        height: 32,
+                        color: const Color(0xFF282828),
+                        child: const Icon(
+                          Icons.music_note_rounded,
+                          color: Colors.white,
+                          size: 18,
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.graphic_eq_rounded,
-                      color: Colors.white,
-                      size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   const Text(
                     "Pocketo Play",
                     style: TextStyle(
-                      fontSize: 21,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   const Spacer(),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14.0),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.search_rounded, color: Colors.white),
-                      onPressed: _openSearchScreen,
-                      tooltip: 'Search Music',
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.search_rounded, color: Colors.white70),
+                    onPressed: _openSearchScreen,
+                    tooltip: 'Search Music',
                   ),
                 ],
               ),

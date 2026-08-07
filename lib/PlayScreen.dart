@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:music/ArtworkHelper.dart';
 
 class PlayScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -171,9 +172,12 @@ class _PlayScreenState extends State<PlayScreen>
     String currentSong = widget.currentlyPlayingIndex != null
         ? widget.audioFiles[widget.currentlyPlayingIndex!].path.split('/').last
         : "No song playing";
+    String? currentPath = widget.currentlyPlayingIndex != null
+        ? widget.audioFiles[widget.currentlyPlayingIndex!].path
+        : null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B1E),
+      backgroundColor: const Color(0xFF121212),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Padding(
@@ -181,17 +185,17 @@ class _PlayScreenState extends State<PlayScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
             decoration: BoxDecoration(
-              color: const Color(0xFF170E33),
-              borderRadius: BorderRadius.circular(28.0),
+              color: const Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.circular(24.0),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: const Color(0xFF2C2C2E),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -199,72 +203,34 @@ class _PlayScreenState extends State<PlayScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const SizedBox(height: 10),
-                AnimatedBuilder(
-                  animation: _scaleAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Container(
-                        width: 220,
-                        height: 220,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: widget.isPlaying
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight)
-                              : const LinearGradient(
-                                  colors: [Color(0xFF332050), Color(0xFF1B1030)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight),
-                          boxShadow: widget.isPlaying
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFFC77DFF).withValues(alpha: 0.4),
-                                    blurRadius: 25,
-                                    spreadRadius: 2,
-                                  ),
-                                ]
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.3),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 180,
-                            height: 180,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF0F0B1E),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                width: 2,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.music_note_rounded,
-                              size: 90.0,
-                              color: widget.isPlaying
-                                  ? const Color(0xFFC77DFF)
-                                  : Colors.white38,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 30.0),
+                if (currentPath != null)
+                  ArtworkHelper.buildArtworkWidget(
+                    currentPath,
+                    width: 240,
+                    height: 240,
+                    borderRadius: 18.0,
+                  )
+                else
+                  Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF282828),
+                      borderRadius: BorderRadius.circular(18.0),
+                    ),
+                    child: const Icon(
+                      Icons.music_note_rounded,
+                      size: 90.0,
+                      color: Colors.white38,
+                    ),
+                  ),
+                const SizedBox(height: 28.0),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0),
                   child: Text(
                     currentSong,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -276,21 +242,21 @@ class _PlayScreenState extends State<PlayScreen>
                 const SizedBox(height: 4.0),
                 Text(
                   widget.currentlyPlayingIndex != null ? "Pocketo Play Audio" : "Select a track to play",
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white54,
                   ),
                 ),
                 const SizedBox(height: 20.0),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.0),
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
-                    activeTrackColor: const Color(0xFFC77DFF),
-                    inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+                    activeTrackColor: Colors.white,
+                    inactiveTrackColor: Colors.white24,
                     thumbColor: Colors.white,
-                    overlayColor: const Color(0xFFC77DFF).withValues(alpha: 0.2),
-                    trackHeight: 4.0,
+                    overlayColor: Colors.white12,
+                    trackHeight: 3.5,
                   ),
                   child: Slider(
                     value: sliderValue.clamp(0, widget.duration.inSeconds.toDouble() > 0 ? widget.duration.inSeconds.toDouble() : 0.0),
@@ -311,11 +277,11 @@ class _PlayScreenState extends State<PlayScreen>
                     children: [
                       Text(
                         _formatDuration(Duration(seconds: sliderValue.toInt())),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                       Text(
                         _formatDuration(widget.duration),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                     ],
                   ),
@@ -333,8 +299,8 @@ class _PlayScreenState extends State<PlayScreen>
                                 : Icons.shuffle_rounded,
                         size: 24,
                         color: widget.audioPlayer.loopMode != LoopMode.off
-                            ? const Color(0xFFC77DFF)
-                            : Colors.white54,
+                            ? Colors.white
+                            : Colors.white38,
                       ),
                       onPressed: () {
                         if (widget.audioPlayer.loopMode == LoopMode.off) {
@@ -358,20 +324,11 @@ class _PlayScreenState extends State<PlayScreen>
                       onPressed: onPreviousSong,
                     ),
                     Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF7B2CBF), Color(0xFFC77DFF)],
-                        ),
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF9D4EDD).withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            spreadRadius: 1,
-                          ),
-                        ],
                       ),
                       child: IconButton(
                         icon: Icon(
@@ -379,7 +336,7 @@ class _PlayScreenState extends State<PlayScreen>
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
                           size: 34,
-                          color: Colors.white,
+                          color: Colors.black,
                         ),
                         onPressed: widget.currentlyPlayingIndex != null
                             ? () => widget.isPlaying
@@ -400,7 +357,7 @@ class _PlayScreenState extends State<PlayScreen>
                       icon: const Icon(
                         Icons.queue_music_rounded,
                         size: 24,
-                        color: Colors.white54,
+                        color: Colors.white38,
                       ),
                       onPressed: showSongSelectionSheet,
                     ),
