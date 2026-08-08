@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:music/AppSettings.dart';
+import 'package:music/AppTheme.dart';
+import 'package:music/ArtworkHelper.dart';
+import 'package:music/ProfileScreen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -14,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
   final Function() onPrevious;
   final Function(int) playTrack;
   final Function(int) onTabTapped;
+  final Future<void> Function()? onRescan;
 
   const SettingsScreen({
     super.key,
@@ -29,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onPrevious,
     required this.playTrack,
     required this.onTabTapped,
+    this.onRescan,
   });
 
   @override
@@ -36,80 +42,176 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _autoPlayNext = true;
-  bool _highQualityAudio = true;
-  bool _keepScreenOn = false;
+  bool _isRescanning = false;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 20.0, top: 12.0),
-        physics: const BouncingScrollPhysics(),
-        child: Column(
+  Future<void> _handleRescan() async {
+    if (_isRescanning) return;
+
+    setState(() {
+      _isRescanning = true;
+    });
+
+    try {
+      if (widget.onRescan != null) {
+        await widget.onRescan!();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    "Library updated! ${widget.audioFiles.length} audio tracks found.",
+                  ),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error scanning library: $e"),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRescanning = false;
+        });
+      }
+    }
+  }
+
+  void _handleClearCache() {
+    ArtworkHelper.clearCache();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
           children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 16),
-            _buildPlaybackSettings(),
-            const SizedBox(height: 16),
-            _buildLibrarySettings(),
-            const SizedBox(height: 16),
-            _buildAboutCard(),
+            Icon(Icons.cleaning_services_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 10),
+            Text("Artwork memory cache cleared successfully."),
           ],
         ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+
+    return ListenableBuilder(
+      listenable: AppSettings.instance,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: scaffoldBg,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 30.0, top: 12.0),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              children: [
+                _buildHeaderCard(context),
+                const SizedBox(height: 16),
+                _buildThemeSettings(context),
+                const SizedBox(height: 16),
+                _buildPlaybackSettings(context),
+                const SizedBox(height: 16),
+                _buildLibrarySettings(context),
+                const SizedBox(height: 16),
+                _buildAboutCard(context),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHeaderCard(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         padding: const EdgeInsets.all(18.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF282828),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF282828)
+                    : const Color(0xFFEEF2FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.settings_rounded,
-                color: Colors.white,
+                color: isDark ? Colors.white : AppTheme.lightPrimary,
                 size: 26,
               ),
             ),
             const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "App Settings",
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "App Settings",
+                    style: TextStyle(
+                      fontSize: 18.0,
+                      fontWeight: FontWeight.bold,
+                      color: titleCol,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "Customize playback & preferences",
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: Colors.white.withValues(alpha: 0.5),
+                  const SizedBox(height: 2),
+                  Text(
+                    "Customize playback, theme & preferences",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: subTextCol,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -117,15 +219,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPlaybackSettings() {
+  Widget _buildThemeSettings(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+    final currentMode = AppSettings.instance.themeMode;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
         ),
@@ -134,48 +243,195 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Row(
+                children: [
+                  Icon(
+                    Icons.palette_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white70 : AppTheme.lightPrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Appearance & Theme",
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
+                      color: titleCol,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Choose how Pocketo Play looks to you",
+                style: TextStyle(
+                  fontSize: 12.0,
+                  color: subTextCol,
+                ),
+              ),
+              Divider(color: borderCol, height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildThemeOption(
+                      context: context,
+                      title: "Light",
+                      mode: ThemeMode.light,
+                      icon: Icons.light_mode_rounded,
+                      isSelected: currentMode == ThemeMode.light,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildThemeOption(
+                      context: context,
+                      title: "Dark",
+                      mode: ThemeMode.dark,
+                      icon: Icons.dark_mode_rounded,
+                      isSelected: currentMode == ThemeMode.dark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildThemeOption(
+                      context: context,
+                      title: "System",
+                      mode: ThemeMode.system,
+                      icon: Icons.brightness_auto_rounded,
+                      isSelected: currentMode == ThemeMode.system,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required String title,
+    required ThemeMode mode,
+    required IconData icon,
+    required bool isSelected,
+  }) {
+    final isDark = AppTheme.isDark(context);
+    final activeBg = isDark
+        ? const Color(0xFF323236)
+        : const Color(0xFFEEF2FF);
+    final inactiveBg = isDark
+        ? const Color(0xFF242426)
+        : const Color(0xFFF8FAFC);
+    final activeBorder = isDark
+        ? Colors.white54
+        : AppTheme.lightPrimary;
+    final inactiveBorder = AppTheme.border(context);
+    final textCol = isSelected
+        ? (isDark ? Colors.white : AppTheme.lightPrimary)
+        : AppTheme.textSecondaryColor(context);
+
+    return InkWell(
+      onTap: () {
+        AppSettings.instance.setThemeMode(mode);
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 8.0),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : inactiveBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? activeBorder : inactiveBorder,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected
+                  ? (isDark ? Colors.white : AppTheme.lightPrimary)
+                  : AppTheme.textSecondaryColor(context),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: textCol,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaybackSettings(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(
+            color: borderCol,
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 "Playback Settings",
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
-              const Divider(color: Color(0xFF282828), height: 20),
+              Divider(color: borderCol, height: 20),
               _buildSwitchTile(
+                context: context,
                 icon: Icons.skip_next_rounded,
                 title: "Auto-play Next Track",
                 subtitle: "Automatically play next track when song finishes",
-                value: _autoPlayNext,
+                value: AppSettings.instance.autoPlayNext,
                 onChanged: (val) {
-                  setState(() {
-                    _autoPlayNext = val;
-                  });
+                  AppSettings.instance.setAutoPlayNext(val);
                 },
               ),
-              const Divider(color: Color(0xFF282828), height: 12),
+              Divider(color: borderCol, height: 12),
               _buildSwitchTile(
+                context: context,
                 icon: Icons.equalizer_rounded,
                 title: "High Quality Audio Output",
-                subtitle: "Enable enhanced audio decoding",
-                value: _highQualityAudio,
+                subtitle: "Enable enhanced audio decoding & volume boost",
+                value: AppSettings.instance.highQualityAudio,
                 onChanged: (val) {
-                  setState(() {
-                    _highQualityAudio = val;
-                  });
+                  AppSettings.instance.setHighQualityAudio(val);
                 },
               ),
-              const Divider(color: Color(0xFF282828), height: 12),
+              Divider(color: borderCol, height: 12),
               _buildSwitchTile(
+                context: context,
                 icon: Icons.screen_lock_portrait_rounded,
                 title: "Keep Screen Active",
                 subtitle: "Prevent screen timeout while on full player",
-                value: _keepScreenOn,
+                value: AppSettings.instance.keepScreenOn,
                 onChanged: (val) {
-                  setState(() {
-                    _keepScreenOn = val;
-                  });
+                  AppSettings.instance.setKeepScreenOn(val);
                 },
               ),
             ],
@@ -185,15 +441,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildLibrarySettings() {
+  Widget _buildLibrarySettings(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
         ),
@@ -202,36 +462,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Library & Storage",
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
-              const Divider(color: Color(0xFF282828), height: 20),
+              Divider(color: borderCol, height: 20),
               _buildActionTile(
+                context: context,
                 icon: Icons.library_music_rounded,
                 title: "Music Library",
-                subtitle: "${widget.audioFiles.length} tracks detected on device",
+                subtitle:
+                    "${widget.audioFiles.length} tracks detected on device",
                 trailingText: "Scanned",
                 onTap: null,
               ),
-              const Divider(color: Color(0xFF282828), height: 12),
+              Divider(color: borderCol, height: 12),
               _buildActionTile(
+                context: context,
                 icon: Icons.refresh_rounded,
                 title: "Rescan Audio Files",
                 subtitle: "Refresh local media library and storage paths",
-                trailingText: "Refresh",
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Library rescanned successfully."),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
+                trailingText: _isRescanning ? "Scanning..." : "Refresh",
+                isLoading: _isRescanning,
+                onTap: _handleRescan,
+              ),
+              Divider(color: borderCol, height: 12),
+              _buildActionTile(
+                context: context,
+                icon: Icons.cleaning_services_rounded,
+                title: "Clear Artwork Cache",
+                subtitle: "Free up memory by resetting cached album covers",
+                trailingText: "Clear",
+                onTap: _handleClearCache,
               ),
             ],
           ),
@@ -240,15 +506,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAboutCard() {
+  Widget _buildAboutCard(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
         ),
@@ -257,24 +527,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "About Application",
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
-              const Divider(color: Color(0xFF282828), height: 20),
+              Divider(color: borderCol, height: 20),
               _buildActionTile(
+                context: context,
+                icon: Icons.person_pin_rounded,
+                title: "Developer Profile",
+                subtitle: "Navin Kumar Verma • App Developer",
+                trailingText: "Profile",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(
+                        audioFiles: widget.audioFiles,
+                        audioPlayer: widget.audioPlayer,
+                        currentlyPlayingIndex: widget.currentlyPlayingIndex,
+                        duration: widget.duration,
+                        position: widget.position,
+                        isPlaying: widget.isPlaying,
+                        onPlay: widget.onPlay,
+                        onPause: widget.onPause,
+                        onNext: widget.onNext,
+                        onPrevious: widget.onPrevious,
+                        playTrack: widget.playTrack,
+                        onTabTapped: widget.onTabTapped,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Divider(color: borderCol, height: 12),
+              _buildActionTile(
+                context: context,
                 icon: Icons.apps_rounded,
-                title: "App Name",
-                subtitle: "Pocketo Play",
+                title: "App Version",
+                subtitle: "Pocketo Play (Build 1.0.0+1)",
                 trailingText: "v1.0.0",
                 onTap: null,
               ),
-              const Divider(color: Color(0xFF282828), height: 12),
+              Divider(color: borderCol, height: 12),
               _buildActionTile(
+                context: context,
                 icon: Icons.verified_user_rounded,
                 title: "Privacy & Licenses",
                 subtitle: "Open source software licenses",
@@ -284,6 +585,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     context: context,
                     applicationName: 'Pocketo Play',
                     applicationVersion: '1.0.0',
+                    applicationIcon: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/appicon.png',
+                          width: 48,
+                          height: 48,
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -295,15 +607,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSwitchTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final isDark = AppTheme.isDark(context);
+    final iconCol = AppTheme.iconCol(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+
     return Row(
       children: [
-        Icon(icon, color: Colors.white70, size: 22),
+        Icon(icon, color: iconCol, size: 22),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
@@ -311,8 +629,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: titleCol,
                   fontWeight: FontWeight.w600,
                   fontSize: 14.5,
                 ),
@@ -321,7 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: subTextCol,
                   fontSize: 12.0,
                 ),
               ),
@@ -331,29 +649,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: Colors.white,
-          activeTrackColor: const Color(0xFF3A3A3C),
-          inactiveTrackColor: const Color(0xFF282828),
+          activeThumbColor: Colors.white,
+          activeTrackColor:
+              isDark ? const Color(0xFF3A3A3C) : AppTheme.lightPrimary,
+          inactiveTrackColor:
+              isDark ? const Color(0xFF282828) : const Color(0xFFE2E8F0),
         ),
       ],
     );
   }
 
   Widget _buildActionTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String subtitle,
     required String trailingText,
     required VoidCallback? onTap,
+    bool isLoading = false,
   }) {
+    final isDark = AppTheme.isDark(context);
+    final iconCol = AppTheme.iconCol(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+    final badgeBg =
+        isDark ? const Color(0xFF282828) : const Color(0xFFEEF2FF);
+    final badgeText =
+        isDark ? Colors.white70 : AppTheme.lightPrimary;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white70, size: 22),
+            Icon(icon, color: iconCol, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -361,8 +692,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: titleCol,
                       fontWeight: FontWeight.w600,
                       fontSize: 14.5,
                     ),
@@ -371,28 +702,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: subTextCol,
                       fontSize: 12.0,
                     ),
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF282828),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                trailingText,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+            if (isLoading)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  trailingText,
+                  style: TextStyle(
+                    color: badgeText,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

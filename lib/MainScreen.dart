@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:music/AppSettings.dart';
+import 'package:music/AppTheme.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/SettingsScreen.dart';
 import 'package:music/SearchScreen.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/main.dart';
 import 'package:path_provider/path_provider.dart';
 
 class MainScreen extends StatefulWidget {
   final List<String> audioFiles;
 
-  MainScreen({super.key, required this.audioFiles});
+  const MainScreen({super.key, required this.audioFiles});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -27,6 +30,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isPlaying = false;
   bool _isRepeat = false;
   bool _isMiniPlayerDismissed = false;
+  List<String> _currentAudioFiles = [];
   List<AudioSource> audioSources = [];
   ConcatenatingAudioSource playlist = ConcatenatingAudioSource(children: []);
   final AudioPlayer audioPlayer = AudioPlayer();
@@ -34,14 +38,15 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _currentAudioFiles = List.from(widget.audioFiles);
     _setupAudioPlayer();
     _setupPlaylist();
   }
 
-  void _setupPlaylist() async {
+  Future<void> _setupPlaylist() async {
     final artUri = await _loadAssetAsFileUri('assets/music.png');
-    audioSources = widget.audioFiles.map((filePath) {
-      final index = widget.audioFiles.indexOf(filePath);
+    audioSources = _currentAudioFiles.map((filePath) {
+      final index = _currentAudioFiles.indexOf(filePath);
       final metadata = _fetchMetadataFromPath(filePath);
       return AudioSource.uri(
         Uri.file(filePath),
@@ -55,55 +60,72 @@ class _MainScreenState extends State<MainScreen> {
       );
     }).toList();
 
-    playlist.addAll(audioSources);
+    await playlist.clear();
+    await playlist.addAll(audioSources);
   }
 
   void _setupAudioPlayer() {
     // Listen to changes in audio duration
     audioPlayer.durationStream.listen((duration) {
-      setState(() {
-        _duration = duration ?? Duration.zero;
-      });
+      if (mounted) {
+        setState(() {
+          _duration = duration ?? Duration.zero;
+        });
+      }
     });
 
     // Listen to changes in audio position
     audioPlayer.positionStream.listen((position) {
-      setState(() {
-        _position = position;
-      });
+      if (mounted) {
+        setState(() {
+          _position = position;
+        });
+      }
     });
 
     // Listen to player state changes
-
     audioPlayer.playerStateStream.listen((playerState) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = playerState.playing;
+        });
+      }
+
       if (playerState.processingState == ProcessingState.completed) {
-        print("Song completed");
+        debugPrint("Song completed");
         if (_isRepeat) {
           audioPlayer.seek(Duration.zero, index: _currentlyPlayingIndex);
           audioPlayer.play();
-        } else {
+        } else if (AppSettings.instance.autoPlayNext) {
           _nextTrack();
+        } else {
+          audioPlayer.pause();
+          audioPlayer.seek(Duration.zero);
         }
       }
     });
 
     // Listen to changes in the current track index
     audioPlayer.currentIndexStream.listen((index) {
-      setState(() {
-        _currentlyPlayingIndex = index;
-      });
+      if (mounted) {
+        setState(() {
+          _currentlyPlayingIndex = index;
+        });
+      }
     });
   }
 
   Future<void> playSong(int index) async {
-    if (index < 0 || index >= widget.audioFiles.length) return;
+    if (index < 0 || index >= _currentAudioFiles.length) return;
 
     try {
-      setState(() {
-        _currentlyPlayingIndex = index;
-        _isPlaying = true;
-        _isMiniPlayerDismissed = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentlyPlayingIndex = index;
+          _isPlaying = true;
+          _isMiniPlayerDismissed = false;
+        });
+      }
 
       await audioPlayer.setAudioSource(
         playlist,
@@ -113,7 +135,7 @@ class _MainScreenState extends State<MainScreen> {
 
       await audioPlayer.play();
     } catch (e) {
-      print("Error playing song: $e");
+      debugPrint("Error playing song: $e");
     }
   }
 
@@ -128,36 +150,44 @@ class _MainScreenState extends State<MainScreen> {
 
       return file.uri;
     } catch (e) {
-      print("Error loading asset: $e");
+      debugPrint("Error loading asset: $e");
       return Uri();
     }
   }
 
   Future<void> play() async {
     if (_currentlyPlayingIndex != null) {
-      setState(() {
-        _isPlaying = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isPlaying = true;
+        });
+      }
       await audioPlayer.play();
+    } else if (_currentAudioFiles.isNotEmpty) {
+      await playSong(0);
     }
   }
 
   Future<void> pause() async {
-    setState(() {
-      _isPlaying = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isPlaying = false;
+      });
+    }
     await audioPlayer.pause();
   }
 
   Future<void> _nextTrack() async {
+    if (_currentAudioFiles.isEmpty) return;
     int nextIndex = (_currentlyPlayingIndex ?? 0) + 1;
-    if (nextIndex >= widget.audioFiles.length) nextIndex = 0;
+    if (nextIndex >= _currentAudioFiles.length) nextIndex = 0;
     await playSong(nextIndex);
   }
 
   Future<void> _previousTrack() async {
+    if (_currentAudioFiles.isEmpty) return;
     int previousIndex = (_currentlyPlayingIndex ?? 0) - 1;
-    if (previousIndex < 0) previousIndex = widget.audioFiles.length - 1;
+    if (previousIndex < 0) previousIndex = _currentAudioFiles.length - 1;
     await playSong(previousIndex);
   }
 
@@ -172,8 +202,8 @@ class _MainScreenState extends State<MainScreen> {
     final title = fileName.split('.').first;
     return {
       'title': title,
-      'album': "Unknown Album",
-      'artist': "Unknown Artist",
+      'album': "Pocketo Album",
+      'artist': "Local Audio",
     };
   }
 
@@ -183,12 +213,30 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  /// Rescans device storage for new audio tracks and updates playlist in real-time
+  Future<void> rescanLibrary() async {
+    try {
+      final updatedFiles = await scanAudioFilesOnDevice();
+      final filePaths = updatedFiles.map((f) => f.path).toList();
+
+      if (mounted) {
+        setState(() {
+          _currentAudioFiles = filePaths;
+        });
+      }
+
+      await _setupPlaylist();
+    } catch (e) {
+      debugPrint("Error rescanning library: $e");
+    }
+  }
+
   void _openSearchScreen() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => SearchScreen(
-          audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
+          audioFiles: _currentAudioFiles.map((path) => File(path)).toList(),
           audioPlayer: audioPlayer,
           playTrack: playSong,
         ),
@@ -204,7 +252,7 @@ class _MainScreenState extends State<MainScreen> {
     if (_isMiniPlayerDismissed ||
         _currentlyPlayingIndex == null ||
         _currentlyPlayingIndex! < 0 ||
-        _currentlyPlayingIndex! >= widget.audioFiles.length) {
+        _currentlyPlayingIndex! >= _currentAudioFiles.length) {
       return const SizedBox.shrink();
     }
 
@@ -212,8 +260,15 @@ class _MainScreenState extends State<MainScreen> {
       return const SizedBox.shrink();
     }
 
-    final currentFilePath = widget.audioFiles[_currentlyPlayingIndex!];
-    final currentSong = currentFilePath.split(Platform.pathSeparator).last;
+    final isDark = AppTheme.isDark(context);
+    final currentFilePath = _currentAudioFiles[_currentlyPlayingIndex!] ;
+    final currentSong =
+        currentFilePath.split(Platform.pathSeparator).last;
+    final miniBg = AppTheme.miniPlayerBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+    final iconCol = AppTheme.iconCol(context);
 
     return GestureDetector(
       onVerticalDragEnd: (details) {
@@ -226,19 +281,27 @@ class _MainScreenState extends State<MainScreen> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: miniBg,
           borderRadius: BorderRadius.circular(16.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,
@@ -249,7 +312,8 @@ class _MainScreenState extends State<MainScreen> {
               _onTabTapped(1);
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Row(
                 children: [
                   ArtworkHelper.buildArtworkWidget(
@@ -266,8 +330,8 @@ class _MainScreenState extends State<MainScreen> {
                       children: [
                         Text(
                           currentSong,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: titleCol,
                             fontSize: 14.0,
                             fontWeight: FontWeight.w600,
                           ),
@@ -276,8 +340,8 @@ class _MainScreenState extends State<MainScreen> {
                         const SizedBox(height: 2.0),
                         Text(
                           "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
-                          style: const TextStyle(
-                            color: Colors.white60,
+                          style: TextStyle(
+                            color: subTextCol,
                             fontSize: 11.5,
                           ),
                         ),
@@ -287,9 +351,9 @@ class _MainScreenState extends State<MainScreen> {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.skip_previous_rounded,
-                      color: Colors.white,
+                      color: iconCol,
                       size: 24.0,
                     ),
                     onPressed: _previousTrack,
@@ -302,7 +366,7 @@ class _MainScreenState extends State<MainScreen> {
                       _isPlaying
                           ? Icons.pause_circle_filled_rounded
                           : Icons.play_circle_fill_rounded,
-                      color: Colors.white,
+                      color: isDark ? Colors.white : AppTheme.lightPrimary,
                       size: 34.0,
                     ),
                     onPressed: () => _isPlaying ? pause() : play(),
@@ -311,9 +375,9 @@ class _MainScreenState extends State<MainScreen> {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.skip_next_rounded,
-                      color: Colors.white,
+                      color: iconCol,
                       size: 24.0,
                     ),
                     onPressed: _nextTrack,
@@ -322,9 +386,9 @@ class _MainScreenState extends State<MainScreen> {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.close_rounded,
-                      color: Colors.white38,
+                      color: subTextCol,
                       size: 18.0,
                     ),
                     onPressed: () {
@@ -344,6 +408,13 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildCustomBottomBar() {
+    final isDark = AppTheme.isDark(context);
+    final navBg = AppTheme.navBarBg(context);
+    final borderCol = AppTheme.border(context);
+    final selectedPillBg = AppTheme.navBarSelectedBg(context);
+    final selectedTextCol = AppTheme.navBarSelectedText(context);
+    final unselectedCol = AppTheme.textSecondaryColor(context);
+
     final navItems = [
       {'icon': Icons.home_rounded, 'label': 'Home'},
       {'icon': Icons.play_arrow_rounded, 'label': 'Play'},
@@ -354,19 +425,27 @@ class _MainScreenState extends State<MainScreen> {
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16, top: 4),
       height: 60,
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E),
+        color: navBg,
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: const Color(0xFF2C2C2E),
+          color: borderCol,
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -386,7 +465,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               decoration: isSelected
                   ? BoxDecoration(
-                      color: const Color(0xFF2C2C2E),
+                      color: selectedPillBg,
                       borderRadius: BorderRadius.circular(20),
                     )
                   : const BoxDecoration(),
@@ -394,15 +473,15 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Icon(
                     item['icon'] as IconData,
-                    color: isSelected ? Colors.white : Colors.white54,
+                    color: isSelected ? selectedTextCol : unselectedCol,
                     size: 22,
                   ),
                   if (isSelected) ...[
                     const SizedBox(width: 8),
                     Text(
                       item['label'] as String,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: selectedTextCol,
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
                       ),
@@ -419,23 +498,31 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+    final headerBg = AppTheme.headerBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final iconCol = AppTheme.iconCol(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: scaffoldBg,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF181818),
+          decoration: BoxDecoration(
+            color: headerBg,
             border: Border(
               bottom: BorderSide(
-                color: Color(0xFF282828),
+                color: borderCol,
                 width: 1.0,
               ),
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
               child: Row(
                 children: [
                   ClipRRect(
@@ -448,28 +535,28 @@ class _MainScreenState extends State<MainScreen> {
                       errorBuilder: (context, error, stackTrace) => Container(
                         width: 32,
                         height: 32,
-                        color: const Color(0xFF282828),
-                        child: const Icon(
+                        color: AppTheme.secondaryCardBg(context),
+                        child: Icon(
                           Icons.music_note_rounded,
-                          color: Colors.white,
+                          color: titleCol,
                           size: 18,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     "Pocketo Play",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: titleCol,
                       letterSpacing: 0.3,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.search_rounded, color: Colors.white70),
+                    icon: Icon(Icons.search_rounded, color: iconCol),
                     onPressed: _openSearchScreen,
                     tooltip: 'Search Music',
                   ),
@@ -483,7 +570,8 @@ class _MainScreenState extends State<MainScreen> {
         index: _currentIndex,
         children: [
           HomeScreen(
-            audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
+            audioFiles:
+                _currentAudioFiles.map((path) => File(path)).toList(),
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
@@ -495,9 +583,11 @@ class _MainScreenState extends State<MainScreen> {
             onPrevious: _previousTrack,
             playTrack: playSong,
             onTabTapped: _onTabTapped,
+            onRescan: rescanLibrary,
           ),
           PlayScreen(
-            audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
+            audioFiles:
+                _currentAudioFiles.map((path) => File(path)).toList(),
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
@@ -512,7 +602,8 @@ class _MainScreenState extends State<MainScreen> {
             isRepeat: _isRepeat,
           ),
           SettingsScreen(
-            audioFiles: widget.audioFiles.map((path) => File(path)).toList(),
+            audioFiles:
+                _currentAudioFiles.map((path) => File(path)).toList(),
             audioPlayer: audioPlayer,
             currentlyPlayingIndex: _currentlyPlayingIndex,
             isPlaying: _isPlaying,
@@ -524,6 +615,7 @@ class _MainScreenState extends State<MainScreen> {
             onPrevious: _previousTrack,
             playTrack: playSong,
             onTabTapped: _onTabTapped,
+            onRescan: rescanLibrary,
           ),
         ],
       ),

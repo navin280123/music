@@ -1,30 +1,52 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:music/main.dart';
+import 'package:flutter/material.dart';
+import 'package:music/AppSettings.dart';
+import 'package:music/AppTheme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('AppSettings initializes with defaults and toggles correctly', () async {
+    final settings = AppSettings.instance;
+    await settings.loadSettings();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(settings.themeMode, ThemeMode.system);
+    expect(settings.autoPlayNext, true);
+    expect(settings.highQualityAudio, true);
+    expect(settings.keepScreenOn, false);
+
+    await settings.setThemeMode(ThemeMode.dark);
+    expect(settings.themeMode, ThemeMode.dark);
+
+    await settings.setThemeMode(ThemeMode.light);
+    expect(settings.themeMode, ThemeMode.light);
+
+    await settings.setAutoPlayNext(false);
+    expect(settings.autoPlayNext, false);
+
+    await settings.setHighQualityAudio(false);
+    expect(settings.highQualityAudio, false);
+
+    await settings.setKeepScreenOn(true);
+    expect(settings.keepScreenOn, true);
+
+    await settings.resetToDefaults();
+    expect(settings.themeMode, ThemeMode.system);
+    expect(settings.autoPlayNext, true);
+  });
+
+  test('AppTheme creates valid light and dark ThemeData', () {
+    final light = AppTheme.lightTheme;
+    final dark = AppTheme.darkTheme;
+
+    expect(light.brightness, Brightness.light);
+    expect(dark.brightness, Brightness.dark);
+    expect(light.scaffoldBackgroundColor, AppTheme.lightScaffold);
+    expect(dark.scaffoldBackgroundColor, AppTheme.darkScaffold);
   });
 }

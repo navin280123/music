@@ -1,9 +1,15 @@
 import 'dart:typed_data';
 import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
+import 'package:music/AppTheme.dart';
 
 class ArtworkHelper {
   static final Map<String, Uint8List?> _artworkCache = {};
+
+  /// Clears the in-memory album art cache
+  static void clearCache() {
+    _artworkCache.clear();
+  }
 
   static Future<Uint8List?> getArtwork(String filePath) async {
     if (_artworkCache.containsKey(filePath)) {
@@ -12,7 +18,8 @@ class ArtworkHelper {
 
     try {
       final tag = await AudioTags.read(filePath);
-      final bytes = (tag?.pictures.isNotEmpty ?? false) ? tag!.pictures.first.bytes : null;
+      final bytes =
+          (tag?.pictures.isNotEmpty ?? false) ? tag!.pictures.first.bytes : null;
       _artworkCache[filePath] = bytes;
       return bytes;
     } catch (_) {
@@ -40,23 +47,33 @@ class ArtworkHelper {
               height: height,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
-                  _buildFallbackArtwork(width, height, borderRadius),
+                  _buildFallbackArtwork(context, width, height, borderRadius),
             ),
           );
         }
-        return _buildFallbackArtwork(width, height, borderRadius);
+        return _buildFallbackArtwork(context, width, height, borderRadius);
       },
     );
   }
 
   static Widget _buildFallbackArtwork(
-      double width, double height, double borderRadius) {
+    BuildContext context,
+    double width,
+    double height,
+    double borderRadius,
+  ) {
+    final isDark = AppTheme.isDark(context);
+    final bgColor =
+        isDark ? const Color(0xFF282828) : const Color(0xFFE2E8F0);
+    final iconColor =
+        isDark ? Colors.white60 : const Color(0xFF64748B);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: Container(
         width: width,
         height: height,
-        color: const Color(0xFF282828),
+        color: bgColor,
         child: Image.asset(
           'assets/music.png',
           width: width,
@@ -65,7 +82,7 @@ class ArtworkHelper {
           errorBuilder: (context, error, stackTrace) => Center(
             child: Icon(
               Icons.music_note_rounded,
-              color: Colors.white60,
+              color: iconColor,
               size: width * 0.5,
             ),
           ),

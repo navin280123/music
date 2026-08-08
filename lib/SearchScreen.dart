@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -15,7 +17,7 @@ class SearchScreen extends StatefulWidget {
   });
 
   @override
-  _SearchScreenState createState() => _SearchScreenState();
+  State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
@@ -37,32 +39,45 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+    final headerBg = AppTheme.headerBg(context);
+    final borderCol = AppTheme.border(context);
+    final searchBoxBg = AppTheme.secondaryCardBg(context);
+    final textCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+    final cardBg = AppTheme.cardBg(context);
+
     List filteredFiles = widget.audioFiles
-        .where((file) =>
-            file.path.toLowerCase().contains(_searchQuery.trim().toLowerCase()))
+        .where((file) => file.path
+            .split(Platform.pathSeparator)
+            .last
+            .toLowerCase()
+            .contains(_searchQuery.trim().toLowerCase()))
         .toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: scaffoldBg,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60.0),
+        preferredSize: const Size.fromHeight(64.0),
         child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF181818),
+          decoration: BoxDecoration(
+            color: headerBg,
             border: Border(
               bottom: BorderSide(
-                color: Color(0xFF282828),
+                color: borderCol,
                 width: 1.0,
               ),
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    icon: Icon(Icons.arrow_back_rounded, color: textCol),
                     onPressed: () => Navigator.pop(context),
                     tooltip: 'Back',
                   ),
@@ -71,16 +86,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     borderRadius: BorderRadius.circular(8.0),
                     child: Image.asset(
                       'assets/appicon.png',
-                      width: 30,
-                      height: 30,
+                      width: 32,
+                      height: 32,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        width: 30,
-                        height: 30,
-                        color: const Color(0xFF282828),
-                        child: const Icon(
+                        width: 32,
+                        height: 32,
+                        color: searchBoxBg,
+                        child: Icon(
                           Icons.music_note_rounded,
-                          color: Colors.white,
+                          color: textCol,
                           size: 16,
                         ),
                       ),
@@ -89,10 +104,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Container(
-                      height: 40.0,
+                      height: 42.0,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF282828),
-                        borderRadius: BorderRadius.circular(20.0),
+                        color: searchBoxBg,
+                        borderRadius: BorderRadius.circular(21.0),
+                        border: Border.all(color: borderCol),
                       ),
                       child: TextField(
                         controller: _searchController,
@@ -101,30 +117,31 @@ class _SearchScreenState extends State<SearchScreen> {
                             _searchQuery = value;
                           });
                         },
-                        style: const TextStyle(color: Colors.white, fontSize: 14.0),
+                        style: TextStyle(color: textCol, fontSize: 14.0),
                         decoration: InputDecoration(
                           hintText: 'Search tracks, songs...',
-                          hintStyle: const TextStyle(
-                            color: Colors.white54,
+                          hintStyle: TextStyle(
+                            color: subTextCol,
                             fontSize: 14.0,
                           ),
                           border: InputBorder.none,
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.search_rounded,
-                            color: Colors.white54,
+                            color: subTextCol,
                             size: 20,
                           ),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.close_rounded,
-                                    color: Colors.white54,
+                                    color: subTextCol,
                                     size: 18,
                                   ),
                                   onPressed: _clearSearch,
                                 )
                               : null,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10.0),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10.0),
                         ),
                       ),
                     ),
@@ -136,33 +153,39 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
       body: Container(
-        color: const Color(0xFF121212),
+        color: scaffoldBg,
         child: Column(
           children: [
             if (_searchQuery.trim().isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0, vertical: 10.0),
                 child: Row(
                   children: [
-                    const Text(
+                    Text(
                       "Search Results",
                       style: TextStyle(
-                        color: Colors.white70,
+                        color: subTextCol,
                         fontSize: 13.0,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10.0, vertical: 4.0),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF282828),
+                        color: isDark
+                            ? const Color(0xFF282828)
+                            : const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
                       child: Text(
                         "${filteredFiles.length} found",
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.white
+                              : AppTheme.lightPrimary,
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
                         ),
@@ -173,28 +196,41 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             Expanded(
               child: _searchQuery.trim().isEmpty
-                  ? _buildInitialState()
+                  ? _buildInitialState(context)
                   : filteredFiles.isEmpty
-                      ? _buildNoResultsState()
+                      ? _buildNoResultsState(context)
                       : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 20.0, top: 4.0),
+                          padding: const EdgeInsets.only(
+                              bottom: 20.0, top: 4.0),
                           physics: const BouncingScrollPhysics(),
                           itemCount: filteredFiles.length,
                           itemBuilder: (context, index) {
                             var file = filteredFiles[index];
-                            String title = file.path.split('/').last;
-                            int originalIndex = widget.audioFiles.indexOf(file);
+                            String title =
+                                file.path.split(Platform.pathSeparator).last;
+                            int originalIndex =
+                                widget.audioFiles.indexOf(file);
 
                             return Container(
                               margin: const EdgeInsets.symmetric(
                                   vertical: 4.0, horizontal: 16.0),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1C1C1E),
-                                borderRadius: BorderRadius.circular(12.0),
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(14.0),
                                 border: Border.all(
-                                  color: const Color(0xFF2C2C2E),
+                                  color: borderCol,
                                   width: 1,
                                 ),
+                                boxShadow: isDark
+                                    ? []
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.03),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                               ),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(
@@ -207,18 +243,18 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ),
                                 title: Text(
                                   title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: textCol,
                                     fontWeight: FontWeight.w500,
                                     fontSize: 14.5,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                subtitle: const Text(
+                                subtitle: Text(
                                   "Tap to play track",
                                   style: TextStyle(
                                     fontSize: 12.0,
-                                    color: Colors.white54,
+                                    color: subTextCol,
                                   ),
                                 ),
                                 onTap: () {
@@ -226,8 +262,13 @@ class _SearchScreenState extends State<SearchScreen> {
                                   Navigator.pop(context);
                                 },
                                 trailing: IconButton(
-                                  icon: const Icon(Icons.play_circle_fill_rounded,
-                                      color: Colors.white, size: 32.0),
+                                  icon: Icon(
+                                    Icons.play_circle_fill_rounded,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppTheme.lightPrimary,
+                                    size: 32.0,
+                                  ),
                                   onPressed: () {
                                     widget.playTrack(originalIndex);
                                     Navigator.pop(context);
@@ -244,37 +285,44 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildInitialState() {
+  Widget _buildInitialState(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final textCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20.0),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1C1C1E),
+            padding: const EdgeInsets.all(22.0),
+            decoration: BoxDecoration(
+              color: cardBg,
               shape: BoxShape.circle,
+              border: Border.all(color: borderCol),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.search_rounded,
               size: 44,
-              color: Colors.white54,
+              color: isDark ? Colors.white54 : AppTheme.lightPrimary,
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             "Search Your Library",
             style: TextStyle(
-              color: Colors.white,
+              color: textCol,
               fontSize: 17,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             "Type a song title or keyword above to filter tracks",
             style: TextStyle(
-              color: Colors.white54,
+              color: subTextCol,
               fontSize: 13,
             ),
           ),
@@ -283,28 +331,34 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildNoResultsState() {
+  Widget _buildNoResultsState(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final textCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20.0),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1C1C1E),
+            padding: const EdgeInsets.all(22.0),
+            decoration: BoxDecoration(
+              color: cardBg,
               shape: BoxShape.circle,
+              border: Border.all(color: borderCol),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.manage_search_rounded,
               size: 44,
-              color: Colors.white38,
+              color: subTextCol,
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             "No Matching Songs",
             style: TextStyle(
-              color: Colors.white,
+              color: textCol,
               fontSize: 17,
               fontWeight: FontWeight.bold,
             ),
@@ -315,8 +369,8 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Text(
               "No audio files found for '$_searchQuery'. Try checking spelling or search another keyword.",
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white54,
+              style: TextStyle(
+                color: subTextCol,
                 fontSize: 13,
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:music/AppTheme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -33,76 +34,94 @@ class ProfileScreen extends StatefulWidget {
   });
 
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  double sliderValue = 0;
-  bool showBottomSheet = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.audioPlayer.positionStream.listen((position) {
-      setState(() {
-        sliderValue = position.inSeconds.toDouble();
-      });
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: scaffoldBg,
+      appBar: AppBar(
+        title: Text(
+          "Developer Profile",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimaryColor(context),
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: AppTheme.headerBg(context),
+        iconTheme: IconThemeData(color: AppTheme.textPrimaryColor(context)),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(
-          bottom: 20.0,
+          bottom: 24.0,
           top: 12.0,
         ),
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            _buildProfileHeader(),
+            _buildProfileHeader(context),
             const SizedBox(height: 16),
-            _buildDeveloperInfo(),
+            _buildDeveloperInfo(context),
             const SizedBox(height: 16),
-            _buildAboutApp(),
+            _buildAboutApp(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader() {
+  Widget _buildProfileHeader(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white24,
-                    width: 1.5,
+                    color: isDark ? Colors.white24 : AppTheme.lightPrimary.withValues(alpha: 0.4),
+                    width: 2.0,
                   ),
                 ),
                 child: const CircleAvatar(
@@ -111,34 +130,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 14.0),
-              const Text(
-                "Developer's Profile",
+              Text(
+                "Navin Kumar Verma",
                 style: TextStyle(
                   fontSize: 21.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
               const SizedBox(height: 4.0),
-              const Text(
+              Text(
                 "Pocketo Play Creator",
                 style: TextStyle(
                   fontSize: 13.0,
-                  color: Colors.white54,
+                  color: subTextCol,
                 ),
               ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildSocialIcon(Icons.facebook, "Facebook"),
-                  _buildSocialIcon(Icons.camera_alt, "Instagram"),
-                  _buildSocialIcon(Icons.code, "GitHub"),
-                  _buildSocialIcon(Icons.work, "LinkedIn"),
+                  _buildSocialIcon(context, Icons.facebook, "Facebook"),
+                  _buildSocialIcon(context, Icons.camera_alt, "Instagram"),
+                  _buildSocialIcon(context, Icons.code_rounded, "GitHub"),
+                  _buildSocialIcon(context, Icons.work_rounded, "LinkedIn"),
                 ],
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: () {
                   final Uri emailLaunchUri = Uri(
                     scheme: 'mailto',
@@ -148,8 +167,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   _launchUrl(emailLaunchUri);
                 },
+                icon: const Icon(Icons.email_outlined, size: 18),
+                label: const Text('Contact Developer'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2C2C2E),
+                  backgroundColor: isDark
+                      ? const Color(0xFF2C2C2E)
+                      : AppTheme.lightPrimary,
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -157,13 +180,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 24.0, vertical: 12.0),
-                ),
-                child: const Text(
-                  'Contact Developer',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.0,
-                  ),
                 ),
               ),
             ],
@@ -173,25 +189,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSocialIcon(IconData icon, String platform) {
-    return GestureDetector(
-      onTap: () => _showDialog(platform),
+  Widget _buildSocialIcon(
+      BuildContext context, IconData icon, String platform) {
+    final isDark = AppTheme.isDark(context);
+    final btnBg = isDark ? const Color(0xFF282828) : const Color(0xFFF1F5F9);
+    final iconCol =
+        isDark ? Colors.white70 : const Color(0xFF334155);
+
+    return InkWell(
+      onTap: () => _openPlatformUrl(platform),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(12.0),
-        decoration: const BoxDecoration(
-          color: Color(0xFF282828),
+        decoration: BoxDecoration(
+          color: btnBg,
           shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.border(context)),
         ),
         child: Icon(
           icon,
-          color: Colors.white70,
+          color: iconCol,
           size: 22.0,
         ),
       ),
     );
   }
 
-  void _showDialog(String platform) async {
+  void _openPlatformUrl(String platform) async {
     String url;
     switch (platform) {
       case "Facebook":
@@ -207,21 +231,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         url = "https://www.linkedin.com/in/navin-kumar-verma";
         break;
       default:
-        url = "https://www.example.com";
+        url = "https://github.com/navin280123";
     }
 
-    await _launchUrl(Uri.parse(url));
+    try {
+      await _launchUrl(Uri.parse(url));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Could not open $platform link")),
+        );
+      }
+    }
   }
 
-  Widget _buildDeveloperInfo() {
+  Widget _buildDeveloperInfo(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
         ),
@@ -230,19 +266,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Developer Information",
                 style: TextStyle(
                   fontSize: 17.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
-              const Divider(color: Color(0xFF282828), height: 20),
-              _buildInfoRow(Icons.person_rounded, "Navin Kumar Verma"),
-              _buildInfoRow(Icons.email_rounded, "Kumarnavinverma7@gmail.com"),
-              _buildInfoRow(Icons.description_rounded,
-                  "Flutter Developer with a passion for elegant applications."),
+              Divider(color: borderCol, height: 20),
+              _buildInfoRow(context, Icons.person_rounded, "Navin Kumar Verma"),
+              _buildInfoRow(
+                  context, Icons.email_rounded, "Kumarnavinverma7@gmail.com"),
+              _buildInfoRow(context, Icons.description_rounded,
+                  "Flutter Developer passionate about crafting clean and responsive audio applications."),
             ],
           ),
         ),
@@ -250,19 +287,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String text) {
+    final isDark = AppTheme.isDark(context);
+    final iconCol =
+        isDark ? Colors.white70 : const Color(0xFF475569);
+    final textCol = AppTheme.textSecondaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white70, size: 20),
+          Icon(icon, color: iconCol, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14.0,
-                color: Colors.white70,
+                color: textCol,
               ),
             ),
           ),
@@ -271,15 +314,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAboutApp() {
+  Widget _buildAboutApp(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1C1C1E),
+          color: cardBg,
           borderRadius: BorderRadius.circular(20.0),
           border: Border.all(
-            color: const Color(0xFF2C2C2E),
+            color: borderCol,
             width: 1,
           ),
         ),
@@ -288,19 +335,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "About this App",
                 style: TextStyle(
                   fontSize: 17.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: titleCol,
                 ),
               ),
-              const Divider(color: Color(0xFF282828), height: 20),
-              _buildInfoRow(Icons.apps_rounded, "App Name: Pocketo Play"),
-              _buildInfoRow(Icons.verified_rounded, "Version: 1.0.0"),
-              _buildInfoRow(Icons.description_rounded,
-                  "This app allows you to play audio files and manage playback with a sleek UI."),
+              Divider(color: borderCol, height: 20),
+              _buildInfoRow(
+                  context, Icons.apps_rounded, "App Name: Pocketo Play"),
+              _buildInfoRow(context, Icons.verified_rounded, "Version: 1.0.0"),
+              _buildInfoRow(context, Icons.music_note_rounded,
+                  "Local audio playback with background audio service, metadata extraction, search, and theme personalization."),
             ],
           ),
         ),
@@ -308,10 +356,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
-
   Future<void> _launchUrl(Uri url) async {
-    if (!await launchUrl(url)) {
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       throw Exception('Could not launch $url');
     }
   }
