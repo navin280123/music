@@ -5,11 +5,15 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
-import 'package:music/HomeScreen.dart';
-import 'package:music/PlayScreen.dart';
-import 'package:music/SettingsScreen.dart';
-import 'package:music/SearchScreen.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/HomeScreen.dart';
+import 'package:music/LibraryScreen.dart';
+import 'package:music/PlayScreen.dart';
+import 'package:music/PlaylistManager.dart';
+import 'package:music/SearchScreen.dart';
+import 'package:music/SettingsScreen.dart';
+import 'package:music/SleepTimerService.dart';
+import 'package:music/WaveformVisualizer.dart';
 import 'package:music/main.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -41,6 +45,7 @@ class _MainScreenState extends State<MainScreen> {
     _currentAudioFiles = List.from(widget.audioFiles);
     _setupAudioPlayer();
     _setupPlaylist();
+    PlaylistManager.instance.init();
   }
 
   Future<void> _setupPlaylist() async {
@@ -65,7 +70,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _setupAudioPlayer() {
-    // Listen to changes in audio duration
     audioPlayer.durationStream.listen((duration) {
       if (mounted) {
         setState(() {
@@ -74,7 +78,6 @@ class _MainScreenState extends State<MainScreen> {
       }
     });
 
-    // Listen to changes in audio position
     audioPlayer.positionStream.listen((position) {
       if (mounted) {
         setState(() {
@@ -83,7 +86,6 @@ class _MainScreenState extends State<MainScreen> {
       }
     });
 
-    // Listen to player state changes
     audioPlayer.playerStateStream.listen((playerState) {
       if (mounted) {
         setState(() {
@@ -93,6 +95,8 @@ class _MainScreenState extends State<MainScreen> {
 
       if (playerState.processingState == ProcessingState.completed) {
         debugPrint("Song completed");
+        SleepTimerService.instance.onSongCompleted(audioPlayer);
+
         if (_isRepeat) {
           audioPlayer.seek(Duration.zero, index: _currentlyPlayingIndex);
           audioPlayer.play();
@@ -105,12 +109,14 @@ class _MainScreenState extends State<MainScreen> {
       }
     });
 
-    // Listen to changes in the current track index
     audioPlayer.currentIndexStream.listen((index) {
       if (mounted) {
         setState(() {
           _currentlyPlayingIndex = index;
         });
+      }
+      if (index != null && index >= 0 && index < _currentAudioFiles.length) {
+        PlaylistManager.instance.recordSongPlay(_currentAudioFiles[index]);
       }
     });
   }
@@ -136,6 +142,18 @@ class _MainScreenState extends State<MainScreen> {
       await audioPlayer.play();
     } catch (e) {
       debugPrint("Error playing song: $e");
+    }
+  }
+
+  Future<void> playSongByPath(String path) async {
+    final index = _currentAudioFiles.indexOf(path);
+    if (index != -1) {
+      await playSong(index);
+    } else {
+      // If song wasn't in playlist, append and play
+      _currentAudioFiles.add(path);
+      await _setupPlaylist();
+      await playSong(_currentAudioFiles.length - 1);
     }
   }
 
@@ -213,7 +231,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  /// Rescans device storage for new audio tracks and updates playlist in real-time
   Future<void> rescanLibrary() async {
     try {
       final updatedFiles = await scanAudioFilesOnDevice();
@@ -261,7 +278,7 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     final isDark = AppTheme.isDark(context);
-    final currentFilePath = _currentAudioFiles[_currentlyPlayingIndex!] ;
+    final currentFilePath = _currentAudioFiles[_currentlyPlayingIndex!];
     final currentSong =
         currentFilePath.split(Platform.pathSeparator).last;
     final miniBg = AppTheme.miniPlayerBg(context);
@@ -269,6 +286,7 @@ class _MainScreenState extends State<MainScreen> {
     final titleCol = AppTheme.textPrimaryColor(context);
     final subTextCol = AppTheme.textSecondaryColor(context);
     final iconCol = AppTheme.iconCol(context);
+    final isFav = PlaylistManager.instance.isFavorite(currentFilePath);
 
     return GestureDetector(
       onVerticalDragEnd: (details) {
@@ -338,16 +356,43 @@ class _MainScreenState extends State<MainScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2.0),
-                        Text(
-                          "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
-                          style: TextStyle(
-                            color: subTextCol,
-                            fontSize: 11.5,
-                          ),
+                        Row(
+                          children: [
+                            WaveformVisualizer(
+                              isPlaying: _isPlaying,
+                              barCount: 5,
+                              height: 12,
+                              barWidth: 2.5,
+                              barColor: isDark
+                                  ? const Color(0xFF818CF8)
+                                  : AppTheme.lightPrimary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
+                              style: TextStyle(
+                                color: subTextCol,
+                                fontSize: 11.0,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: Icon(
+                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: isFav ? const Color(0xFFF43F5E) : subTextCol,
+                      size: 20.0,
+                    ),
+                    onPressed: () {
+                      PlaylistManager.instance.toggleFavorite(currentFilePath);
+                    },
+                  ),
+                  const SizedBox(width: 8),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -358,7 +403,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     onPressed: _previousTrack,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -371,7 +416,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     onPressed: () => _isPlaying ? pause() : play(),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -382,7 +427,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                     onPressed: _nextTrack,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -418,6 +463,7 @@ class _MainScreenState extends State<MainScreen> {
     final navItems = [
       {'icon': Icons.home_rounded, 'label': 'Home'},
       {'icon': Icons.play_arrow_rounded, 'label': 'Play'},
+      {'icon': Icons.queue_music_rounded, 'label': 'Library'},
       {'icon': Icons.settings_rounded, 'label': 'Settings'},
     ];
 
@@ -460,7 +506,7 @@ class _MainScreenState extends State<MainScreen> {
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeInOut,
               padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 16.0 : 12.0,
+                horizontal: isSelected ? 14.0 : 10.0,
                 vertical: 8.0,
               ),
               decoration: isSelected
@@ -474,16 +520,16 @@ class _MainScreenState extends State<MainScreen> {
                   Icon(
                     item['icon'] as IconData,
                     color: isSelected ? selectedTextCol : unselectedCol,
-                    size: 22,
+                    size: 20,
                   ),
                   if (isSelected) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       item['label'] as String,
                       style: TextStyle(
                         color: selectedTextCol,
                         fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
+                        fontSize: 13.0,
                       ),
                     ),
                   ],
@@ -600,6 +646,13 @@ class _MainScreenState extends State<MainScreen> {
             playTrack: playSong,
             toggleRepeat: _toggleRepeat,
             isRepeat: _isRepeat,
+          ),
+          LibraryScreen(
+            audioFiles:
+                _currentAudioFiles.map((path) => File(path)).toList(),
+            audioPlayer: audioPlayer,
+            playTrack: playSong,
+            playFilePath: playSongByPath,
           ),
           SettingsScreen(
             audioFiles:

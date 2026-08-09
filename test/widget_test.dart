@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:music/ABLooperWidget.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
+import 'package:music/LyricsService.dart';
+import 'package:music/PlaylistManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -48,5 +51,77 @@ void main() {
     expect(dark.brightness, Brightness.dark);
     expect(light.scaffoldBackgroundColor, AppTheme.lightScaffold);
     expect(dark.scaffoldBackgroundColor, AppTheme.darkScaffold);
+  });
+
+  test('PlaylistManager handles favorites, playlists, and play stats correctly', () async {
+    final manager = PlaylistManager.instance;
+    await manager.init();
+
+    // Favorites
+    expect(manager.isFavorite('/storage/test_song.mp3'), false);
+    await manager.toggleFavorite('/storage/test_song.mp3');
+    expect(manager.isFavorite('/storage/test_song.mp3'), true);
+    await manager.toggleFavorite('/storage/test_song.mp3');
+    expect(manager.isFavorite('/storage/test_song.mp3'), false);
+
+    // Custom Playlists
+    final created = await manager.createPlaylist('Chill Vibes');
+    expect(created, true);
+    expect(manager.getPlaylistNames().contains('Chill Vibes'), true);
+
+    await manager.addSongToPlaylist('Chill Vibes', '/storage/song1.mp3');
+    expect(manager.getSongsInPlaylist('Chill Vibes').length, 1);
+
+    await manager.removeSongFromPlaylist('Chill Vibes', '/storage/song1.mp3');
+    expect(manager.getSongsInPlaylist('Chill Vibes').isEmpty, true);
+
+    await manager.deletePlaylist('Chill Vibes');
+    expect(manager.getPlaylistNames().contains('Chill Vibes'), false);
+
+    // Play stats
+    await manager.recordSongPlay('/storage/song1.mp3');
+    await manager.recordSongPlay('/storage/song1.mp3');
+    expect(manager.getSongPlayCount('/storage/song1.mp3'), 2);
+    expect(manager.totalPlaysCount >= 2, true);
+  });
+
+  test('LyricsService parses LRC formatted text accurately', () {
+    const lrc = '''
+[00:05.50]First line of lyrics
+[00:15.00]Second line of song
+[01:02.30]Chorus starts here
+''';
+    final lines = LyricsService.parseLrc(lrc);
+    expect(lines.length, 3);
+    expect(lines[0].text, 'First line of lyrics');
+    expect(lines[0].timestamp.inSeconds, 5);
+    expect(lines[1].text, 'Second line of song');
+    expect(lines[1].timestamp.inSeconds, 15);
+    expect(lines[2].text, 'Chorus starts here');
+    expect(lines[2].timestamp.inSeconds, 62);
+
+    final activeIndex = LyricsService.getActiveLyricIndex(lines, const Duration(seconds: 16));
+    expect(activeIndex, 1);
+  });
+
+  test('ABLooperService sets and clears loop markers correctly', () {
+    final looper = ABLooperService.instance;
+    looper.clear();
+
+    looper.setPointA(const Duration(seconds: 10));
+    expect(looper.pointA, const Duration(seconds: 10));
+    expect(looper.pointB, null);
+
+    looper.setPointB(const Duration(seconds: 25));
+    expect(looper.pointB, const Duration(seconds: 25));
+    expect(looper.isEnabled, true);
+
+    looper.toggleEnabled();
+    expect(looper.isEnabled, false);
+
+    looper.clear();
+    expect(looper.pointA, null);
+    expect(looper.pointB, null);
+    expect(looper.isEnabled, false);
   });
 }

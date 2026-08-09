@@ -3,7 +3,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/EqualizerPresetSheet.dart';
 import 'package:music/ProfileScreen.dart';
+import 'package:music/SleepTimerService.dart';
 
 class SettingsScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -130,6 +132,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 _buildHeaderCard(context),
                 const SizedBox(height: 16),
+                _buildSoundAndTimerSettings(context),
+                const SizedBox(height: 16),
                 _buildThemeSettings(context),
                 const SizedBox(height: 16),
                 _buildPlaybackSettings(context),
@@ -140,6 +144,209 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSoundAndTimerSettings(BuildContext context) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final titleCol = AppTheme.textPrimaryColor(context);
+
+    return ListenableBuilder(
+      listenable: SleepTimerService.instance,
+      builder: (context, _) {
+        final timer = SleepTimerService.instance;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20.0),
+              border: Border.all(color: borderCol, width: 1),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Audio Enhancements & Timer",
+                    style: TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
+                      color: titleCol,
+                    ),
+                  ),
+                  Divider(color: borderCol, height: 20),
+                  _buildActionTile(
+                    context: context,
+                    icon: Icons.tune_rounded,
+                    title: "Sound & Equalizer Presets",
+                    subtitle: "Adjust playback speed, pitch, and audio profiles",
+                    trailingText: "Configure",
+                    onTap: () {
+                      EqualizerPresetSheet.show(context, widget.audioPlayer);
+                    },
+                  ),
+                  Divider(color: borderCol, height: 12),
+                  _buildActionTile(
+                    context: context,
+                    icon: Icons.bedtime_rounded,
+                    title: "Sleep Timer",
+                    subtitle: timer.isActive
+                        ? "Active (${timer.formattedRemainingTime} remaining)"
+                        : "Turn off playback automatically with gentle fade",
+                    trailingText: timer.isActive ? "Active" : "Set Timer",
+                    onTap: () {
+                      _showSleepTimerDialog(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSleepTimerDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = AppTheme.isDark(context);
+        final sheetBg = isDark ? const Color(0xFF1E1E20) : Colors.white;
+        final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+        final subTextCol = isDark ? Colors.white54 : const Color(0xFF64748B);
+        final activeCol = isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary;
+
+        return ListenableBuilder(
+          listenable: SleepTimerService.instance,
+          builder: (context, _) {
+            final timerService = SleepTimerService.instance;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: activeCol.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(Icons.bedtime_rounded, color: activeCol, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Sleep Timer",
+                                style: TextStyle(
+                                  color: textCol,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                timerService.isActive
+                                    ? "Active: ${timerService.formattedRemainingTime}"
+                                    : "Stops playback with gentle fade-out",
+                                style: TextStyle(
+                                  color: timerService.isActive ? activeCol : subTextCol,
+                                  fontSize: 12,
+                                  fontWeight: timerService.isActive
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (timerService.isActive)
+                        TextButton(
+                          onPressed: () {
+                            timerService.cancelTimer(widget.audioPlayer);
+                            Navigator.pop(context);
+                          },
+                          child: const Text("Turn Off", style: TextStyle(color: Colors.redAccent)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [15, 30, 45, 60].map((mins) {
+                      return ElevatedButton(
+                        onPressed: () {
+                          timerService.startTimer(mins, widget.audioPlayer);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Sleep timer set for $mins minutes"),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? const Color(0xFF28282A) : const Color(0xFFF1F5F9),
+                          foregroundColor: textCol,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text("$mins min"),
+                      );
+                    }).toList()
+                      ..add(
+                        ElevatedButton(
+                          onPressed: () {
+                            timerService.setEndOfTrackMode(widget.audioPlayer);
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Sleep timer will stop at the end of this track"),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: activeCol.withValues(alpha: 0.2),
+                            foregroundColor: activeCol,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("End of Track"),
+                        ),
+                      ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
         );
       },
     );

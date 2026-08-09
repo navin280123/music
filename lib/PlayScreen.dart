@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
+import 'package:music/ABLooperWidget.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/DriveModeScreen.dart';
+import 'package:music/EqualizerPresetSheet.dart';
+import 'package:music/LyricsViewerSheet.dart';
+import 'package:music/PlaylistManager.dart';
+import 'package:music/SleepTimerService.dart';
+import 'package:music/TagEditorSheet.dart';
 
 class PlayScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -50,10 +57,10 @@ class _PlayScreenState extends State<PlayScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1400),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 0.96, end: 1.02).animate(
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.02).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
 
@@ -86,6 +93,164 @@ class _PlayScreenState extends State<PlayScreen>
     widget.audioPlayer.seek(Duration(seconds: seconds.toInt()));
   }
 
+  void _showSleepTimerDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = AppTheme.isDark(context);
+        final sheetBg = isDark ? const Color(0xFF1E1E20) : Colors.white;
+        final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+        final subTextCol = isDark ? Colors.white54 : const Color(0xFF64748B);
+        final activeCol = isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary;
+
+        return ListenableBuilder(
+          listenable: SleepTimerService.instance,
+          builder: (context, _) {
+            final timerService = SleepTimerService.instance;
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: activeCol.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(Icons.bedtime_rounded, color: activeCol, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Sleep Timer",
+                                style: TextStyle(
+                                  color: textCol,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                timerService.isActive
+                                    ? "Active: ${timerService.formattedRemainingTime}"
+                                    : "Stops playback with gentle fade-out",
+                                style: TextStyle(
+                                  color: timerService.isActive ? activeCol : subTextCol,
+                                  fontSize: 12,
+                                  fontWeight: timerService.isActive
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (timerService.isActive)
+                        TextButton(
+                          onPressed: () {
+                            timerService.cancelTimer(widget.audioPlayer);
+                            Navigator.pop(context);
+                          },
+                          child: const Text("Turn Off", style: TextStyle(color: Colors.redAccent)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [15, 30, 45, 60].map((mins) {
+                      return ElevatedButton(
+                        onPressed: () {
+                          timerService.startTimer(mins, widget.audioPlayer);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Sleep timer set for $mins minutes"),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark ? const Color(0xFF28282A) : const Color(0xFFF1F5F9),
+                          foregroundColor: textCol,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text("$mins min"),
+                      );
+                    }).toList()
+                      ..add(
+                        ElevatedButton(
+                          onPressed: () {
+                            timerService.setEndOfTrackMode(widget.audioPlayer);
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Sleep timer will stop at the end of this track"),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: activeCol.withValues(alpha: 0.2),
+                            foregroundColor: activeCol,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("End of Track"),
+                        ),
+                      ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openDriveMode() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DriveModeScreen(
+          audioFiles: widget.audioFiles,
+          audioPlayer: widget.audioPlayer,
+          currentlyPlayingIndex: widget.currentlyPlayingIndex,
+          isPlaying: widget.isPlaying,
+          onPlay: widget.onPlay,
+          onPause: widget.onPause,
+          onNext: widget.onNext,
+          onPrevious: widget.onPrevious,
+        ),
+      ),
+    );
+  }
+
   void showSongSelectionSheet() {
     final isDark = AppTheme.isDark(context);
     final sheetBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
@@ -108,7 +273,6 @@ class _PlayScreenState extends State<PlayScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Drag handle
               Container(
                 width: 40,
                 height: 4,
@@ -118,7 +282,6 @@ class _PlayScreenState extends State<PlayScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              // Header with title and close button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -226,6 +389,7 @@ class _PlayScreenState extends State<PlayScreen>
     final titleCol = AppTheme.textPrimaryColor(context);
     final subTextCol = AppTheme.textSecondaryColor(context);
     final iconCol = AppTheme.iconCol(context);
+    final activeCol = isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary;
 
     String currentSong = widget.currentlyPlayingIndex != null &&
             widget.currentlyPlayingIndex! < widget.audioFiles.length
@@ -238,10 +402,9 @@ class _PlayScreenState extends State<PlayScreen>
         ? widget.audioFiles[widget.currentlyPlayingIndex!].path
         : null;
 
-    final primaryBtnBg =
-        isDark ? Colors.white : AppTheme.lightPrimary;
-    final primaryBtnIcon =
-        isDark ? Colors.black : Colors.white;
+    final isFav = currentPath != null && PlaylistManager.instance.isFavorite(currentPath);
+    final primaryBtnBg = isDark ? Colors.white : AppTheme.lightPrimary;
+    final primaryBtnIcon = isDark ? Colors.black : Colors.white;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -249,10 +412,10 @@ class _PlayScreenState extends State<PlayScreen>
         physics: const BouncingScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.only(
-              left: 16.0, right: 16.0, top: 16.0, bottom: 100.0),
+              left: 16.0, right: 16.0, top: 12.0, bottom: 100.0),
           child: Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                const EdgeInsets.symmetric(horizontal: 18.0, vertical: 20.0),
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: BorderRadius.circular(24.0),
@@ -277,60 +440,178 @@ class _PlayScreenState extends State<PlayScreen>
                     ],
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(height: 10),
-                ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: currentPath != null
-                      ? ArtworkHelper.buildArtworkWidget(
-                          currentPath,
-                          width: 240,
-                          height: 240,
-                          borderRadius: 20.0,
-                        )
-                      : Container(
-                          width: 240,
-                          height: 240,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF282828)
-                                : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                          child: Icon(
-                            Icons.music_note_rounded,
-                            size: 90.0,
-                            color: isDark ? Colors.white38 : Colors.grey.shade400,
-                          ),
+                // Top Status Badges (Sleep Timer, Looper)
+                ListenableBuilder(
+                  listenable: SleepTimerService.instance,
+                  builder: (context, _) {
+                    final sleepActive = SleepTimerService.instance.isActive;
+                    final looperActive = ABLooperService.instance.isEnabled;
+
+                    if (!sleepActive && !looperActive) {
+                      return const SizedBox(height: 8);
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (sleepActive)
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFF10B981)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.bedtime_rounded, color: Color(0xFF10B981), size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    SleepTimerService.instance.formattedRemainingTime,
+                                    style: const TextStyle(
+                                      color: Color(0xFF10B981),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (looperActive)
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: activeCol.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: activeCol),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.repeat_on_rounded, color: activeCol, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "A-B Looping",
+                                    style: TextStyle(
+                                      color: activeCol,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+                // Ambient Glow & Album Art
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Dynamic Ambient Glow
+                    if (widget.isPlaying)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        width: 220,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: activeCol.withValues(alpha: 0.35),
+                              blurRadius: 45,
+                              spreadRadius: 8,
+                            ),
+                          ],
                         ),
-                ),
-                const SizedBox(height: 28.0),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  child: Text(
-                    currentSong,
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.bold,
-                      color: titleCol,
+                      ),
+
+                    ScaleTransition(
+                      scale: _scaleAnimation,
+                      child: currentPath != null
+                          ? ArtworkHelper.buildArtworkWidget(
+                              currentPath,
+                              width: 220,
+                              height: 220,
+                              borderRadius: 20.0,
+                            )
+                          : Container(
+                              width: 220,
+                              height: 220,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF282828)
+                                    : const Color(0xFFE2E8F0),
+                                borderRadius: BorderRadius.circular(20.0),
+                              ),
+                              child: Icon(
+                                Icons.music_note_rounded,
+                                size: 80.0,
+                                color: isDark ? Colors.white38 : Colors.grey.shade400,
+                              ),
+                            ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 4.0),
-                Text(
-                  widget.currentlyPlayingIndex != null
-                      ? "Pocketo Play Audio"
-                      : "Select a track to play",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: subTextCol,
-                  ),
+                  ],
                 ),
                 const SizedBox(height: 20.0),
+
+                // Song Title & Liked Toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            currentSong,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: titleCol,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          const SizedBox(height: 2.0),
+                          Text(
+                            widget.currentlyPlayingIndex != null
+                                ? "Pocketo Play Audio"
+                                : "Select a track to play",
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: subTextCol,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (currentPath != null)
+                      IconButton(
+                        icon: Icon(
+                          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                          color: isFav ? const Color(0xFFF43F5E) : subTextCol,
+                          size: 26,
+                        ),
+                        tooltip: isFav ? "Remove from Favorites" : "Add to Favorites",
+                        onPressed: () {
+                          PlaylistManager.instance.toggleFavorite(currentPath);
+                          setState(() {});
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12.0),
+
+                // Seeker Slider
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     thumbShape:
@@ -384,7 +665,9 @@ class _PlayScreenState extends State<PlayScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 24.0),
+                const SizedBox(height: 16.0),
+
+                // Main Playback Controls Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -422,7 +705,7 @@ class _PlayScreenState extends State<PlayScreen>
                         color: iconCol,
                       ),
                       tooltip: 'Previous',
-                      onPressed: onPreviousSong,
+                      onPressed: widget.onPrevious,
                     ),
                     Container(
                       width: 56,
@@ -460,7 +743,7 @@ class _PlayScreenState extends State<PlayScreen>
                         color: iconCol,
                       ),
                       tooltip: 'Next',
-                      onPressed: onNextSong,
+                      onPressed: widget.onNext,
                     ),
                     IconButton(
                       icon: Icon(
@@ -468,10 +751,65 @@ class _PlayScreenState extends State<PlayScreen>
                         size: 24,
                         color: isDark ? Colors.white60 : Colors.grey.shade600,
                       ),
-                      tooltip: 'Song Queue',
+                      tooltip: 'Track Queue',
                       onPressed: showSongSelectionSheet,
                     ),
                   ],
+                ),
+                const SizedBox(height: 18.0),
+                Divider(color: borderCol),
+                const SizedBox(height: 10.0),
+
+                // Quick Action Toolbar (Lyrics, EQ, Sleep, Looper, Drive, Tag Editor)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildQuickActionBtn(
+                        icon: Icons.mic_external_on_rounded,
+                        label: "Lyrics",
+                        color: activeCol,
+                        onTap: () {
+                          if (currentPath != null) {
+                            LyricsViewerSheet.show(context, currentPath, widget.audioPlayer);
+                          }
+                        },
+                      ),
+                      _buildQuickActionBtn(
+                        icon: Icons.tune_rounded,
+                        label: "Sound / EQ",
+                        color: const Color(0xFF38BDF8),
+                        onTap: () => EqualizerPresetSheet.show(context, widget.audioPlayer),
+                      ),
+                      _buildQuickActionBtn(
+                        icon: Icons.bedtime_rounded,
+                        label: "Sleep Timer",
+                        color: const Color(0xFF10B981),
+                        onTap: _showSleepTimerDialog,
+                      ),
+                      _buildQuickActionBtn(
+                        icon: Icons.repeat_on_rounded,
+                        label: "A-B Looper",
+                        color: const Color(0xFFF59E0B),
+                        onTap: () => ABLooperSheet.show(
+                            context, widget.audioPlayer, widget.position),
+                      ),
+                      _buildQuickActionBtn(
+                        icon: Icons.directions_car_rounded,
+                        label: "Drive Mode",
+                        color: const Color(0xFFEC4899),
+                        onTap: _openDriveMode,
+                      ),
+                      if (currentPath != null)
+                        _buildQuickActionBtn(
+                          icon: Icons.edit_note_rounded,
+                          label: "Edit Tags",
+                          color: const Color(0xFF8B5CF6),
+                          onTap: () => TagEditorSheet.show(context, currentPath),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -481,12 +819,45 @@ class _PlayScreenState extends State<PlayScreen>
     );
   }
 
-  void onNextSong() {
-    widget.onNext();
-  }
+  Widget _buildQuickActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = AppTheme.isDark(context);
+    final cardBg = isDark ? const Color(0xFF242426) : const Color(0xFFF1F5F9);
+    final textCol = AppTheme.textPrimaryColor(context);
 
-  void onPreviousSong() {
-    widget.onPrevious();
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: textCol,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDuration(Duration duration) {

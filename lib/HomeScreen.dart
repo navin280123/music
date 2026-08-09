@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 
 import 'package:just_audio/just_audio.dart';
+import 'package:music/ABLooperWidget.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/LyricsViewerSheet.dart';
+import 'package:music/PlaylistManager.dart';
+import 'package:music/TagEditorSheet.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -42,10 +46,79 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _selectedFilter = 'All';
+
+  void _showAddToPlaylistDialog(String filePath) {
+    final playlistNames = PlaylistManager.instance.getPlaylistNames();
+    final isDark = AppTheme.isDark(context);
+
+    if (playlistNames.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("No playlists yet. Create one in the Library tab!"),
+          action: SnackBarAction(
+            label: "Go to Library",
+            onPressed: () => widget.onTabTapped(2),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E1E20) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Add to Playlist",
+                style: TextStyle(
+                  color: AppTheme.textPrimaryColor(context),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...playlistNames.map((name) {
+                return ListTile(
+                  leading: const Icon(Icons.playlist_add_rounded),
+                  title: Text(name),
+                  onTap: () {
+                    PlaylistManager.instance.addSongToPlaylist(name, filePath);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Added to $name"),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
     final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+    final activeCol = isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary;
+    final cardBg = isDark ? const Color(0xFF242426) : const Color(0xFFF1F5F9);
+    final textCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
 
     if (widget.audioFiles.isEmpty) {
       return Scaffold(
@@ -112,18 +185,99 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: scaffoldBg,
-      body: ListView.builder(
-        padding: const EdgeInsets.only(
-          bottom: 20.0,
-          top: 8.0,
+    return ListenableBuilder(
+      listenable: PlaylistManager.instance,
+      builder: (context, _) {
+        List filteredList = widget.audioFiles;
+        if (_selectedFilter == 'Favorites') {
+          filteredList = widget.audioFiles
+              .where((f) => PlaylistManager.instance.isFavorite(f.path))
+              .toList();
+        }
+
+        return Scaffold(
+          backgroundColor: scaffoldBg,
+          body: Column(
+            children: [
+              // Filter Chips
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                alignment: Alignment.centerLeft,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All', "All Tracks (${widget.audioFiles.length})", activeCol, cardBg, textCol, subTextCol),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Favorites', "❤️ Favorites (${PlaylistManager.instance.favoritePaths.length})", activeCol, cardBg, textCol, subTextCol),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Song List
+              Expanded(
+                child: filteredList.isEmpty
+                    ? Center(
+                        child: Text(
+                          _selectedFilter == 'Favorites'
+                              ? "No favorites added yet"
+                              : "No tracks found",
+                          style: TextStyle(color: subTextCol),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 20.0, top: 4.0),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredList.length,
+                        itemBuilder: (context, index) {
+                          final file = filteredList[index];
+                          final actualIndex = widget.audioFiles.indexOf(file);
+                          return _buildMusicTile(context, file, actualIndex);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip(
+    String key,
+    String label,
+    Color activeCol,
+    Color cardBg,
+    Color textCol,
+    Color subTextCol,
+  ) {
+    final isSelected = _selectedFilter == key;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedFilter = key;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeCol : cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? activeCol : Colors.transparent,
+          ),
         ),
-        physics: const BouncingScrollPhysics(),
-        itemCount: widget.audioFiles.length,
-        itemBuilder: (context, index) {
-          return _buildMusicTile(context, widget.audioFiles[index], index);
-        },
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : subTextCol,
+            fontSize: 12.5,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
@@ -147,6 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ? (isDark ? Colors.white : AppTheme.lightPrimary)
         : AppTheme.textPrimaryColor(context);
     final subtitleColor = AppTheme.textSecondaryColor(context);
+    final isFav = PlaylistManager.instance.isFavorite(file.path);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
@@ -195,23 +350,101 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: () {
           widget.playTrack(index);
         },
-        trailing: IconButton(
-          icon: Icon(
-            isPlayingCurrent
-                ? Icons.pause_circle_filled_rounded
-                : Icons.play_circle_fill_rounded,
-            color: isCurrentSelected
-                ? (isDark ? Colors.white : AppTheme.lightPrimary)
-                : (isDark ? Colors.white70 : const Color(0xFF475569)),
-            size: 32.0,
-          ),
-          onPressed: () {
-            if (isPlayingCurrent) {
-              widget.onPause();
-            } else {
-              widget.playTrack(index);
-            }
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Quick Heart Favorite
+            IconButton(
+              icon: Icon(
+                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                color: isFav ? const Color(0xFFF43F5E) : subtitleColor,
+                size: 22,
+              ),
+              onPressed: () {
+                PlaylistManager.instance.toggleFavorite(file.path);
+              },
+            ),
+            // Context Menu
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded, color: subtitleColor, size: 20),
+              onSelected: (val) {
+                switch (val) {
+                  case 'playlist':
+                    _showAddToPlaylistDialog(file.path);
+                    break;
+                  case 'lyrics':
+                    LyricsViewerSheet.show(context, file.path, widget.audioPlayer);
+                    break;
+                  case 'tags':
+                    TagEditorSheet.show(context, file.path);
+                    break;
+                  case 'loop':
+                    ABLooperSheet.show(context, widget.audioPlayer, widget.position);
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'playlist',
+                  child: Row(
+                    children: [
+                      Icon(Icons.playlist_add_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text("Add to Playlist"),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'lyrics',
+                  child: Row(
+                    children: [
+                      Icon(Icons.mic_external_on_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text("View Lyrics"),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'tags',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text("Edit Tags"),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'loop',
+                  child: Row(
+                    children: [
+                      Icon(Icons.repeat_on_rounded, size: 18),
+                      SizedBox(width: 8),
+                      Text("A-B Looper"),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            IconButton(
+              icon: Icon(
+                isPlayingCurrent
+                    ? Icons.pause_circle_filled_rounded
+                    : Icons.play_circle_fill_rounded,
+                color: isCurrentSelected
+                    ? (isDark ? Colors.white : AppTheme.lightPrimary)
+                    : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                size: 32.0,
+              ),
+              onPressed: () {
+                if (isPlayingCurrent) {
+                  widget.onPause();
+                } else {
+                  widget.playTrack(index);
+                }
+              },
+            ),
+          ],
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/PlaylistManager.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -199,82 +200,111 @@ class _SearchScreenState extends State<SearchScreen> {
                   ? _buildInitialState(context)
                   : filteredFiles.isEmpty
                       ? _buildNoResultsState(context)
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(
-                              bottom: 20.0, top: 4.0),
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: filteredFiles.length,
-                          itemBuilder: (context, index) {
-                            var file = filteredFiles[index];
-                            String title =
-                                file.path.split(Platform.pathSeparator).last;
-                            int originalIndex =
-                                widget.audioFiles.indexOf(file);
+                      : ListenableBuilder(
+                          listenable: PlaylistManager.instance,
+                          builder: (context, _) {
+                            return ListView.builder(
+                              padding: const EdgeInsets.only(
+                                  bottom: 20.0, top: 4.0),
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: filteredFiles.length,
+                              itemBuilder: (context, index) {
+                                var file = filteredFiles[index];
+                                String title =
+                                    file.path.split(Platform.pathSeparator).last;
+                                int originalIndex =
+                                    widget.audioFiles.indexOf(file);
+                                final isFav = PlaylistManager.instance
+                                    .isFavorite(file.path);
 
-                            return Container(
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 4.0, horizontal: 16.0),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(14.0),
-                                border: Border.all(
-                                  color: borderCol,
-                                  width: 1,
-                                ),
-                                boxShadow: isDark
-                                    ? []
-                                    : [
-                                        BoxShadow(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.03),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      vertical: 4.0, horizontal: 16.0),
+                                  decoration: BoxDecoration(
+                                    color: cardBg,
+                                    borderRadius: BorderRadius.circular(14.0),
+                                    border: Border.all(
+                                      color: borderCol,
+                                      width: 1,
+                                    ),
+                                    boxShadow: isDark
+                                        ? []
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withValues(alpha: 0.03),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                  ),
+                                  child: ListTile(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(
+                                            vertical: 4.0, horizontal: 12.0),
+                                    leading: ArtworkHelper.buildArtworkWidget(
+                                      file.path,
+                                      width: 44,
+                                      height: 44,
+                                      borderRadius: 8.0,
+                                    ),
+                                    title: Text(
+                                      title,
+                                      style: TextStyle(
+                                        color: textCol,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 14.5,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(
+                                      "Tap to play track",
+                                      style: TextStyle(
+                                        fontSize: 12.0,
+                                        color: subTextCol,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      widget.playTrack(originalIndex);
+                                      Navigator.pop(context);
+                                    },
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(
+                                            isFav
+                                                ? Icons.favorite_rounded
+                                                : Icons
+                                                    .favorite_border_rounded,
+                                            color: isFav
+                                                ? const Color(0xFFF43F5E)
+                                                : subTextCol,
+                                            size: 22.0,
+                                          ),
+                                          onPressed: () {
+                                            PlaylistManager.instance
+                                                .toggleFavorite(file.path);
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.play_circle_fill_rounded,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppTheme.lightPrimary,
+                                            size: 32.0,
+                                          ),
+                                          onPressed: () {
+                                            widget.playTrack(originalIndex);
+                                            Navigator.pop(context);
+                                          },
                                         ),
                                       ],
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 4.0, horizontal: 12.0),
-                                leading: ArtworkHelper.buildArtworkWidget(
-                                  file.path,
-                                  width: 44,
-                                  height: 44,
-                                  borderRadius: 8.0,
-                                ),
-                                title: Text(
-                                  title,
-                                  style: TextStyle(
-                                    color: textCol,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 14.5,
+                                    ),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  "Tap to play track",
-                                  style: TextStyle(
-                                    fontSize: 12.0,
-                                    color: subTextCol,
-                                  ),
-                                ),
-                                onTap: () {
-                                  widget.playTrack(originalIndex);
-                                  Navigator.pop(context);
-                                },
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    Icons.play_circle_fill_rounded,
-                                    color: isDark
-                                        ? Colors.white
-                                        : AppTheme.lightPrimary,
-                                    size: 32.0,
-                                  ),
-                                  onPressed: () {
-                                    widget.playTrack(originalIndex);
-                                    Navigator.pop(context);
-                                  },
-                                ),
-                              ),
+                                );
+                              },
                             );
                           },
                         ),
