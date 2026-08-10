@@ -262,7 +262,12 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   String _formatDuration(Duration duration) {
-    return duration.toString().split('.').first.padLeft(8, "0");
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+    return duration.inHours > 0
+        ? "${duration.inHours}:$minutes:$seconds"
+        : "$minutes:$seconds";
   }
 
   Widget _buildMiniPlayerBar() {
@@ -331,16 +336,16 @@ class _MainScreenState extends State<MainScreen> {
             },
             child: Padding(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                  const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
               child: Row(
                 children: [
                   ArtworkHelper.buildArtworkWidget(
                     currentFilePath,
-                    width: 42,
-                    height: 42,
+                    width: 40,
+                    height: 40,
                     borderRadius: 8,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,29 +355,35 @@ class _MainScreenState extends State<MainScreen> {
                           currentSong,
                           style: TextStyle(
                             color: titleCol,
-                            fontSize: 14.0,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                         const SizedBox(height: 2.0),
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             WaveformVisualizer(
                               isPlaying: _isPlaying,
-                              barCount: 5,
-                              height: 12,
-                              barWidth: 2.5,
+                              barCount: 4,
+                              height: 10,
+                              barWidth: 2.0,
                               barColor: isDark
                                   ? const Color(0xFF818CF8)
                                   : AppTheme.lightPrimary,
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
-                              style: TextStyle(
-                                color: subTextCol,
-                                fontSize: 11.0,
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                "${_formatDuration(_position)} / ${_formatDuration(_duration)}",
+                                style: TextStyle(
+                                  color: subTextCol,
+                                  fontSize: 11.0,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                             ),
                           ],
@@ -380,8 +391,9 @@ class _MainScreenState extends State<MainScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 4),
                   IconButton(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(4),
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
@@ -391,45 +403,35 @@ class _MainScreenState extends State<MainScreen> {
                     onPressed: () {
                       PlaylistManager.instance.toggleFavorite(currentFilePath);
                     },
+                    tooltip: isFav ? 'Unlike' : 'Like',
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      Icons.skip_previous_rounded,
-                      color: iconCol,
-                      size: 24.0,
-                    ),
-                    onPressed: _previousTrack,
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(4),
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       _isPlaying
                           ? Icons.pause_circle_filled_rounded
                           : Icons.play_circle_fill_rounded,
                       color: isDark ? Colors.white : AppTheme.lightPrimary,
-                      size: 34.0,
+                      size: 32.0,
                     ),
                     onPressed: () => _isPlaying ? pause() : play(),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 2),
                   IconButton(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(4),
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       Icons.skip_next_rounded,
                       color: iconCol,
-                      size: 24.0,
+                      size: 22.0,
                     ),
                     onPressed: _nextTrack,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 2),
                   IconButton(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(4),
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       Icons.close_rounded,
