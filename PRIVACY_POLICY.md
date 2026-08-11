@@ -32,4 +32,4 @@ Our application does not collect any personal data and is safe for users of all 
 
 ## 6. Contact Us
 If you have any questions about this Privacy Policy, you may contact us at:  
-**Email:** navinkumarverma2801@gmail.com
+**Email:** kumarnavinverma7@gmail.com
