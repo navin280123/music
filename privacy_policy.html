@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy - Pocketo Play</title>
+  <meta name="description" content="Privacy Policy for Pocketo Play - Offline Music Player" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0d14;
+      --surface: #16161f;
+      --card: #1c1c28;
+      --border: #2a2a3d;
+      --accent: #7c6cf8;
+      --accent2: #a78bfa;
+      --text: #e8e8f0;
+      --muted: #8888a0;
+      --highlight: rgba(124, 108, 248, 0.12);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a0533 0%, #0d0d1a 50%, #001a33 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 60px 24px 50px;
+      text-align: center;
+      position: relative;
+    }
+
+    .app-icon {
+      width: 72px; height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #7c6cf8, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+      box-shadow: 0 8px 32px rgba(124,108,248,0.4);
+    }
+
+    header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--highlight);
+      border: 1px solid rgba(124,108,248,0.35);
+      color: var(--accent2);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-top: 14px;
+    }
+
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+
+    .summary-card .icon {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .summary-card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .summary-card p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 6px;
+    }
+
+    section h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    section p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 12px;
+    }
+
+    section p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul.policy-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    ul.policy-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    ul.policy-list li::before {
+      content: '✓';
+      color: #4ade80;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    ul.policy-list li.no::before {
+      content: '✗';
+      color: #f87171;
+    }
+
+    .perm-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.85rem;
+    }
+
+    .perm-table th {
+      text-align: left;
+      color: var(--accent2);
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    .perm-table td {
+      padding: 10px;
+      color: var(--muted);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: top;
+    }
+
+    .perm-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .perm-table td:first-child {
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
+
+    .highlight-box {
+      background: var(--highlight);
+      border: 1px solid rgba(124,108,248,0.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 14px;
+      font-size: 0.88rem;
+      color: var(--accent2);
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="app-icon">🎵</div>
+  <h1>Privacy Policy</h1>
+  <p>Pocketo Play — Offline Music Player</p>
+  <div class="badge">Last updated: August 2025</div>
+</header>
+
+<main>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="icon">🔒</div>
+      <h3>No Data Collection</h3>
+      <p>We do not collect or upload any personal data.</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">📴</div>
+      <h3>100% Offline</h3>
+      <p>Your audio files remain entirely on your device.</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">🚫</div>
+      <h3>No Ads & No Tracking</h3>
+      <p>Zero advertising SDKs or tracking analytics.</p>
+    </div>
+    <div class="summary-card">
+      <div class="icon">👤</div>
+      <h3>No Account Required</h3>
+      <p>No login or registration needed to use the app.</p>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-label">01 / Overview</div>
+    <h2>About Pocketo Play</h2>
+    <p>Pocketo Play (Application ID: <code>com.navnit.pocketoplay</code>) is a standalone, offline music player application designed to browse and play audio files stored locally on your device.</p>
+    <p>We respect your privacy. This policy outlines how information and permissions are handled.</p>
+  </section>
+
+  <section>
+    <div class="section-label">02 / Data Collection & Usage</div>
+    <h2>Information Collection & Storage</h2>
+    <p>We do NOT collect, transmit, store, or sell any personal or identifiable information.</p>
+    <ul class="policy-list">
+      <li class="no">No personal identifiable information (name, email, phone)</li>
+      <li class="no">No device identifiers or advertising identifiers</li>
+      <li class="no">No location or browsing data</li>
+      <li class="no">No audio content or files uploaded to external servers</li>
+    </ul>
+    <p>All app settings, favorite songs, and playlists are stored locally on your device using Android local storage and are deleted when the app is uninstalled.</p>
+  </section>
+
+  <section>
+    <div class="section-label">03 / Device Permissions</div>
+    <h2>Permissions Used by the App</h2>
+    <table class="perm-table">
+      <thead>
+        <tr>
+          <th>Permission</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>READ_MEDIA_AUDIO</td>
+          <td>Required on Android 13+ to scan and play local music files.</td>
+        </tr>
+        <tr>
+          <td>READ_EXTERNAL_STORAGE</td>
+          <td>Required on Android 12 and below to access local audio files.</td>
+        </tr>
+        <tr>
+          <td>FOREGROUND_SERVICE & FOREGROUND_SERVICE_MEDIA_PLAYBACK</td>
+          <td>Allows uninterrupted music playback while using other apps or when screen is off.</td>
+        </tr>
+        <tr>
+          <td>POST_NOTIFICATIONS</td>
+          <td>Displays media playback controls (play, pause, next) in the notification bar.</td>
+        </tr>
+        <tr>
+          <td>WAKE_LOCK</td>
+          <td>Prevents playback interruption during screen sleep.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="highlight-box">
+      Audio permissions are used solely to read and play audio tracks on the device. No audio or media files are ever transferred or uploaded.
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label">04 / Third-Party Services</div>
+    <h2>Third-Party SDKs & Analytics</h2>
+    <p>Pocketo Play does NOT use any third-party analytics (e.g. Firebase Analytics, Google Analytics), advertising networks, or tracking services.</p>
+    <p>Open-source Flutter libraries used by the app operate strictly locally on device for audio playback, state management, and media notification controls.</p>
+  </section>
+
+  <section>
+    <div class="section-label">05 / Children's Privacy</div>
+    <h2>Children's Privacy</h2>
+    <p>Our app does not collect personal data from anyone, including children under 13 years of age.</p>
+  </section>
+
+  <section>
+    <div class="section-label">06 / Contact</div>
+    <h2>Contact Us</h2>
+    <p>If you have any questions or feedback regarding this Privacy Policy, please contact:</p>
+    <div class="highlight-box">
+      Email: <strong>navinkumarverma2801@gmail.com</strong>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>&copy; 2025 Pocketo Play. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
