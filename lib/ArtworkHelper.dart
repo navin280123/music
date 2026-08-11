@@ -11,7 +11,9 @@ class ArtworkHelper {
     _artworkCache.clear();
   }
 
-  static Future<Uint8List?> getArtwork(String filePath) async {
+  /// Returns the raw artwork bytes for [filePath], or null if not available.
+  /// Results are cached in-memory to avoid repeated disk reads.
+  static Future<Uint8List?> getArtworkBytes(String filePath) async {
     if (_artworkCache.containsKey(filePath)) {
       return _artworkCache[filePath];
     }
@@ -28,6 +30,9 @@ class ArtworkHelper {
     }
   }
 
+  // Keep the old name as an alias for backward compatibility.
+  static Future<Uint8List?> getArtwork(String filePath) => getArtworkBytes(filePath);
+
   static Widget buildArtworkWidget(
     String filePath, {
     double width = 48.0,
@@ -35,7 +40,7 @@ class ArtworkHelper {
     double borderRadius = 10.0,
   }) {
     return FutureBuilder<Uint8List?>(
-      future: getArtwork(filePath),
+      future: getArtworkBytes(filePath),
       builder: (context, snapshot) {
         final bytes = snapshot.data;
         if (bytes != null && bytes.isNotEmpty) {

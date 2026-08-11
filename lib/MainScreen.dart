@@ -6,6 +6,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/ColorPaletteService.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/LibraryScreen.dart';
 import 'package:music/PlayScreen.dart';
@@ -38,6 +39,7 @@ class _MainScreenState extends State<MainScreen> {
   List<AudioSource> audioSources = [];
   ConcatenatingAudioSource playlist = ConcatenatingAudioSource(children: []);
   final AudioPlayer audioPlayer = AudioPlayer();
+  TrackPalette? _miniPlayerPalette;
 
   @override
   void initState() {
@@ -117,8 +119,14 @@ class _MainScreenState extends State<MainScreen> {
       }
       if (index != null && index >= 0 && index < _currentAudioFiles.length) {
         PlaylistManager.instance.recordSongPlay(_currentAudioFiles[index]);
+        _refreshMiniPalette(_currentAudioFiles[index]);
       }
     });
+  }
+
+  Future<void> _refreshMiniPalette(String path) async {
+    final p = await ColorPaletteService.instance.getPalette(path);
+    if (mounted) setState(() => _miniPlayerPalette = p);
   }
 
   Future<void> playSong(int index) async {
@@ -304,17 +312,23 @@ class _MainScreenState extends State<MainScreen> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
         decoration: BoxDecoration(
-          color: miniBg,
+          // Blend the track palette tint into the base mini-player background
+          color: _miniPlayerPalette != null && isDark
+              ? Color.lerp(miniBg, _miniPlayerPalette!.miniPlayerTint, 0.5)
+              : miniBg,
           borderRadius: BorderRadius.circular(16.0),
           border: Border.all(
-            color: borderCol,
+            color: _miniPlayerPalette != null && isDark
+                ? _miniPlayerPalette!.accent.withValues(alpha: 0.25)
+                : borderCol,
             width: 1,
           ),
           boxShadow: isDark
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 10,
+                    color: (_miniPlayerPalette?.accent ?? Colors.black)
+                        .withValues(alpha: 0.18),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ]

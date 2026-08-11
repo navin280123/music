@@ -423,81 +423,234 @@ class _LibraryScreenState extends State<LibraryScreen>
     final subTextCol = AppTheme.textSecondaryColor(context);
     final activeCol = isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary;
 
+    final totalMins = manager.totalListeningMinutes;
+    final totalHrs = totalMins ~/ 60;
+    final remMins = totalMins % 60;
+    final activeHour = manager.mostActiveHour;
+    final hourly = manager.hourlyActivity;
+    final maxHourly =
+        hourly.values.isEmpty ? 1 : hourly.values.reduce((a, b) => a > b ? a : b);
+
+    String hourLabel(int h) {
+      final period = h < 12 ? 'AM' : 'PM';
+      final display = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+      return '$display$period';
+    }
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Hero Wrapped Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF312E81), const Color(0xFF1E1B4B)]
+                    : [const Color(0xFF6366F1), const Color(0xFF4338CA)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: activeCol.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.headphones_rounded, color: Colors.white, size: 22),
+                    const SizedBox(width: 8),
+                    const Text('Pocketo Wrapped',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('ALL TIME',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _wrappedStat(
+                      label: 'Listening Time',
+                      value: totalHrs > 0
+                          ? '${totalHrs}h ${remMins}m'
+                          : '${remMins}m',
+                      icon: Icons.access_time_rounded,
+                    ),
+                    const SizedBox(width: 24),
+                    _wrappedStat(
+                      label: 'Total Tracks',
+                      value: '${widget.audioFiles.length}',
+                      icon: Icons.library_music_rounded,
+                    ),
+                    const SizedBox(width: 24),
+                    _wrappedStat(
+                      label: 'Total Plays',
+                      value: '${manager.totalPlaysCount}',
+                      icon: Icons.play_arrow_rounded,
+                    ),
+                  ],
+                ),
+                if (activeHour != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.schedule_rounded,
+                            color: Colors.white70, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Peak listening hour: ${hourLabel(activeHour)}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Hourly Activity Chart
+          if (hourly.isNotEmpty) ...[
+            Text(
+              'Listening Activity by Hour',
+              style: TextStyle(
+                  color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderCol),
+              ),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 80,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(24, (h) {
+                        final count = hourly[h] ?? 0;
+                        final frac =
+                            maxHourly > 0 ? count / maxHourly : 0.0;
+                        final isActive = h == activeHour;
+                        return Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 1.5),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 600),
+                                  curve: Curves.easeOut,
+                                  height: (frac * 64).clamp(3.0, 64.0),
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? activeCol
+                                        : activeCol.withValues(alpha: 0.35),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('12AM',
+                          style: TextStyle(color: subTextCol, fontSize: 10)),
+                      Text('6AM',
+                          style: TextStyle(color: subTextCol, fontSize: 10)),
+                      Text('12PM',
+                          style: TextStyle(color: subTextCol, fontSize: 10)),
+                      Text('6PM',
+                          style: TextStyle(color: subTextCol, fontSize: 10)),
+                      Text('11PM',
+                          style: TextStyle(color: subTextCol, fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
           // Stats Row
           Row(
             children: [
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderCol),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.music_note_rounded, color: activeCol, size: 24),
-                      const SizedBox(height: 10),
-                      Text(
-                        "${widget.audioFiles.length}",
-                        style: TextStyle(
-                          color: textCol,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Total Tracks", style: TextStyle(color: subTextCol, fontSize: 12)),
-                    ],
-                  ),
+                child: _statCard(
+                  context,
+                  icon: Icons.favorite_rounded,
+                  iconColor: const Color(0xFFF43F5E),
+                  label: 'Liked Songs',
+                  value: '${manager.favoritePaths.length}',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderCol),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.play_circle_filled_rounded,
-                          color: Color(0xFF10B981), size: 24),
-                      const SizedBox(height: 10),
-                      Text(
-                        "${manager.totalPlaysCount}",
-                        style: TextStyle(
-                          color: textCol,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text("Total Plays", style: TextStyle(color: subTextCol, fontSize: 12)),
-                    ],
-                  ),
+                child: _statCard(
+                  context,
+                  icon: Icons.queue_music_rounded,
+                  iconColor: const Color(0xFF38BDF8),
+                  label: 'Playlists',
+                  value: '${manager.getPlaylistNames().length}',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
           // Top Played Header
           Text(
-            "🔥 Most Played Tracks",
+            'Most Played Tracks',
             style: TextStyle(
-              color: textCol,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
+                color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
 
@@ -511,40 +664,112 @@ class _LibraryScreenState extends State<LibraryScreen>
               ),
               child: Center(
                 child: Text(
-                  "Play your songs to build your listening stats!",
+                  'Play your songs to build your listening stats!',
                   style: TextStyle(color: subTextCol, fontSize: 13),
                 ),
               ),
             )
           else
-            ...topSongs.map((entry) {
-              final songName = entry.key.split(Platform.pathSeparator).last;
+            ...topSongs.asMap().entries.map((mapEntry) {
+              final rank = mapEntry.key;
+              final entry = mapEntry.value;
+              final songName =
+                  entry.key.split(Platform.pathSeparator).last;
+              final maxPlays =
+                  topSongs.first.value > 0 ? topSongs.first.value : 1;
+              final fraction = entry.value / maxPlays;
+              final rankColors = [
+                const Color(0xFFFFD700),
+                const Color(0xFFE2E8F0),
+                const Color(0xFFCD7F32),
+                activeCol,
+                activeCol,
+              ];
+
               return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 5),
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: borderCol),
                 ),
-                child: ListTile(
-                  leading: ArtworkHelper.buildArtworkWidget(
-                    entry.key,
-                    width: 42,
-                    height: 42,
-                    borderRadius: 8,
-                  ),
-                  title: Text(
-                    songName,
-                    style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    "${entry.value} ${entry.value == 1 ? 'play' : 'plays'}",
-                    style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  trailing: Icon(Icons.play_circle_fill_rounded, color: activeCol, size: 28),
-                  onTap: () => widget.playFilePath(entry.key),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Stack(
+                        children: [
+                          ArtworkHelper.buildArtworkWidget(
+                            entry.key,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 8,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: rank < 3
+                                    ? rankColors[rank]
+                                    : activeCol,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: cardBg, width: 1.5),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${rank + 1}',
+                                  style: TextStyle(
+                                    color: rank == 0
+                                        ? Colors.black
+                                        : Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      title: Text(
+                        songName,
+                        style: TextStyle(
+                            color: textCol,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${entry.value} ${entry.value == 1 ? 'play' : 'plays'}',
+                        style: TextStyle(
+                            color: activeCol,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      trailing: Icon(Icons.play_circle_fill_rounded,
+                          color: activeCol, size: 28),
+                      onTap: () => widget.playFilePath(entry.key),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          left: 16, right: 16, bottom: 10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: fraction,
+                          backgroundColor:
+                              activeCol.withValues(alpha: 0.12),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(activeCol),
+                          minHeight: 4,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }),
@@ -552,6 +777,59 @@ class _LibraryScreenState extends State<LibraryScreen>
       ),
     );
   }
+
+  Widget _wrappedStat(
+      {required String label,
+      required String value,
+      required IconData icon}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.white70, size: 16),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold)),
+        Text(label,
+            style: const TextStyle(color: Colors.white60, fontSize: 11)),
+      ],
+    );
+  }
+
+  Widget _statCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+  }) {
+    final cardBg = AppTheme.cardBg(context);
+    final borderCol = AppTheme.border(context);
+    final textCol = AppTheme.textPrimaryColor(context);
+    final subTextCol = AppTheme.textSecondaryColor(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderCol),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 24),
+          const SizedBox(height: 10),
+          Text(value,
+              style: TextStyle(
+                  color: textCol, fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: subTextCol, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildSongTile(BuildContext context, String filePath, String fileName) {
     final cardBg = AppTheme.cardBg(context);
