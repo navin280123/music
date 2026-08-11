@@ -82,9 +82,9 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _requestPermissionAndLoadFiles() async {
     bool hasPermission = false;
 
+    // Android 13+: use READ_MEDIA_AUDIO; Android ≤12: use READ_EXTERNAL_STORAGE
     if (await Permission.audio.isGranted ||
-        await Permission.storage.isGranted ||
-        await Permission.manageExternalStorage.isGranted) {
+        await Permission.storage.isGranted) {
       hasPermission = true;
     } else {
       Map<Permission, PermissionStatus> statuses = await [
@@ -95,10 +95,6 @@ class _SplashScreenState extends State<SplashScreen>
       if ((statuses[Permission.audio]?.isGranted ?? false) ||
           (statuses[Permission.storage]?.isGranted ?? false)) {
         hasPermission = true;
-      } else {
-        if (await Permission.manageExternalStorage.request().isGranted) {
-          hasPermission = true;
-        }
       }
     }
 
