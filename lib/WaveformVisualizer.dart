@@ -6,7 +6,7 @@ enum VisualizerStyle {
   /// Classic bouncy waveform bars (used in mini player).
   wave,
 
-  /// More bars with gradient coloring (used in full player).
+  /// Canvas-rendered spectrum with gradient coloring (used in full player).
   spectrum,
 }
 
@@ -43,12 +43,9 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1100),
     );
-
-    if (widget.isPlaying) {
-      _controller.repeat();
-    }
+    if (widget.isPlaying) _controller.repeat();
   }
 
   @override
@@ -72,47 +69,41 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
   @override
   Widget build(BuildContext context) {
     if (widget.style == VisualizerStyle.spectrum) {
-      return _buildSpectrum();
+      return _buildSpectrum(context);
     }
-    return _buildWave();
+    return _buildWave(context);
   }
 
-  // ---- Classic wave mode (mini player) ----
-  Widget _buildWave() {
+  // ── Classic wave (mini player) — stays widget-based, only 4 bars ──────────
+  Widget _buildWave(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        final progress = _controller.value;
+        final t = _controller.value;
         return SizedBox(
           height: widget.height,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(widget.barCount, (index) {
-              final phase = (index / widget.barCount) * 2 * math.pi;
+            children: List.generate(widget.barCount, (i) {
+              final phase = (i / widget.barCount) * 2 * math.pi;
               final sinVal = widget.isPlaying
-                  ? (math.sin(progress * 2 * math.pi * 1.5 + phase) +
-                          math.sin(progress * 2 * math.pi * 2.2 + phase * 2)) /
+                  ? (math.sin(t * 2 * math.pi * 1.5 + phase) +
+                          math.sin(t * 2 * math.pi * 2.2 + phase * 2)) /
                       2
                   : 0.0;
-
-              final normalizedHeight = widget.isPlaying
+              final norm = widget.isPlaying
                   ? 0.2 + 0.8 * ((sinVal + 1) / 2).clamp(0.0, 1.0)
-                  : 0.15 + (0.1 * math.sin(phase).abs());
-
-              final barH =
-                  (normalizedHeight * widget.height).clamp(4.0, widget.height);
+                  : 0.15 + 0.1 * math.sin(phase).abs();
+              final barH = (norm * widget.height).clamp(4.0, widget.height);
 
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 2.0),
                 width: widget.barWidth,
                 height: barH,
                 decoration: BoxDecoration(
-                  color: widget.gradient == null
-                      ? (widget.barColor ?? Theme.of(context).primaryColor)
-                      : null,
-                  gradient: widget.gradient,
+                  color: widget.barColor ?? Theme.of(context).primaryColor,
                   borderRadius: BorderRadius.circular(widget.barWidth),
                 ),
               );
@@ -123,81 +114,110 @@ class _WaveformVisualizerState extends State<WaveformVisualizer>
     );
   }
 
-  // ---- Enhanced spectrum mode (full player) ----
-  Widget _buildSpectrum() {
+  // ── Canvas-rendered spectrum (full player) — zero widget rebuilds ─────────
+  Widget _buildSpectrum(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        final t = _controller.value;
-        final bars = widget.barCount;
-
         return SizedBox(
           height: widget.height,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: List.generate(bars, (i) {
-              final fraction = i / bars;
-
-              // Simulate a multi-frequency spectrum response
-              double barHeight;
-              if (widget.isPlaying) {
-                final freq1 = math.sin(t * math.pi * 2 * 1.3 + fraction * math.pi * 3.5);
-                final freq2 = math.sin(t * math.pi * 2 * 2.1 + fraction * math.pi * 6.0);
-                final freq3 = math.sin(t * math.pi * 2 * 3.7 + fraction * math.pi * 1.5);
-                // Shape: bass-heavy (low i = taller)
-                final shapeFactor = math.exp(-fraction * 1.5) * 0.6 + 0.4;
-                final raw = ((freq1 + freq2 * 0.5 + freq3 * 0.25) / 1.75 + 1) / 2;
-                barHeight = (raw * shapeFactor).clamp(0.08, 1.0) * widget.height;
-              } else {
-                // Idle: tiny static bars
-                barHeight = (0.08 + 0.06 * math.sin(fraction * math.pi * 4).abs()) *
-                    widget.height;
-              }
-
-              // Color gradient: blue -> purple -> pink across bars
-              final colorT = fraction;
-              final barColor = Color.lerp(
-                const Color(0xFF38BDF8), // cyan-blue
-                const Color(0xFFA855F7), // purple
-                colorT,
-              )!;
-              final accentColor = Color.lerp(
-                const Color(0xFFA855F7),
-                const Color(0xFFF43F5E), // rose
-                (colorT - 0.5).clamp(0.0, 1.0) * 2,
-              )!;
-              final finalColor = colorT < 0.5 ? barColor : accentColor;
-
-              return Container(
-                margin: EdgeInsets.symmetric(horizontal: widget.barWidth * 0.3),
-                width: widget.barWidth,
-                height: barHeight.clamp(3.0, widget.height),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      finalColor,
-                      finalColor.withValues(alpha: 0.4),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(widget.barWidth),
-                  boxShadow: widget.isPlaying
-                      ? [
-                          BoxShadow(
-                            color: finalColor.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            spreadRadius: 1,
-                          ),
-                        ]
-                      : null,
-                ),
-              );
-            }),
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _SpectrumPainter(
+              t: _controller.value,
+              barCount: widget.barCount,
+              barWidth: widget.barWidth,
+              isPlaying: widget.isPlaying,
+            ),
           ),
         );
       },
     );
   }
+}
+
+/// Paints the spectrum visualizer directly on canvas.
+/// No widget tree, no layout passes — just raw canvas calls.
+class _SpectrumPainter extends CustomPainter {
+  final double t;
+  final int barCount;
+  final double barWidth;
+  final bool isPlaying;
+
+  // Pre-built color list — computed once per instance
+  late final List<Color> _barColors;
+
+  _SpectrumPainter({
+    required this.t,
+    required this.barCount,
+    required this.barWidth,
+    required this.isPlaying,
+  }) {
+    _barColors = List.generate(barCount, (i) {
+      final frac = i / (barCount - 1);
+      if (frac < 0.5) {
+        return Color.lerp(
+          const Color(0xFF38BDF8), // cyan-sky
+          const Color(0xFFA855F7), // purple
+          frac * 2,
+        )!;
+      } else {
+        return Color.lerp(
+          const Color(0xFFA855F7), // purple
+          const Color(0xFFF43F5E), // rose
+          (frac - 0.5) * 2,
+        )!;
+      }
+    });
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final totalBarWidth = barWidth;
+    final gap = (size.width - barCount * totalBarWidth) / (barCount + 1);
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (int i = 0; i < barCount; i++) {
+      final fraction = i / barCount;
+      double barHeight;
+
+      if (isPlaying) {
+        // Simulate multi-frequency spectrum response in pure math — no object allocation
+        final f1 = math.sin(t * math.pi * 2 * 1.3 + fraction * math.pi * 3.5);
+        final f2 = math.sin(t * math.pi * 2 * 2.1 + fraction * math.pi * 6.0);
+        final f3 = math.sin(t * math.pi * 2 * 3.7 + fraction * math.pi * 1.5);
+        // Bass-heavy shaping (lower-index bars are taller)
+        final shape = math.exp(-fraction * 1.5) * 0.6 + 0.4;
+        final raw = ((f1 + f2 * 0.5 + f3 * 0.25) / 1.75 + 1) / 2;
+        barHeight = (raw * shape).clamp(0.08, 1.0) * size.height;
+      } else {
+        barHeight =
+            (0.08 + 0.06 * math.sin(fraction * math.pi * 4).abs()) * size.height;
+      }
+
+      barHeight = barHeight.clamp(3.0, size.height);
+
+      final left = gap + i * (totalBarWidth + gap);
+      final top = size.height - barHeight;
+      final rect = RRect.fromLTRBR(
+        left,
+        top,
+        left + totalBarWidth,
+        size.height,
+        Radius.circular(totalBarWidth / 2),
+      );
+
+      // Simple flat color — no gradient per-bar, no shadow
+      // The color list gives visual richness without per-frame allocation
+      paint.color = _barColors[i].withValues(
+        alpha: isPlaying ? 0.85 + 0.15 * (barHeight / size.height) : 0.4,
+      );
+
+      canvas.drawRRect(rect, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SpectrumPainter old) =>
+      old.t != t || old.isPlaying != isPlaying;
 }
