@@ -11,17 +11,20 @@ class AppSettings extends ChangeNotifier {
   static const String _keyAutoPlayNext = 'app_auto_play_next';
   static const String _keyHighQualityAudio = 'app_high_quality_audio';
   static const String _keyKeepScreenOn = 'app_keep_screen_on';
+  static const String _keyIncludeVoiceMessages = 'app_include_voice_messages';
 
   ThemeMode _themeMode = ThemeMode.system;
   bool _autoPlayNext = true;
   bool _highQualityAudio = true;
   bool _keepScreenOn = false;
+  bool _includeVoiceMessages = false;
   bool _isInitialized = false;
 
   ThemeMode get themeMode => _themeMode;
   bool get autoPlayNext => _autoPlayNext;
   bool get highQualityAudio => _highQualityAudio;
   bool get keepScreenOn => _keepScreenOn;
+  bool get includeVoiceMessages => _includeVoiceMessages;
   bool get isInitialized => _isInitialized;
 
   /// Loads persisted settings from SharedPreferences
@@ -41,6 +44,7 @@ class AppSettings extends ChangeNotifier {
       _autoPlayNext = prefs.getBool(_keyAutoPlayNext) ?? true;
       _highQualityAudio = prefs.getBool(_keyHighQualityAudio) ?? true;
       _keepScreenOn = prefs.getBool(_keyKeepScreenOn) ?? false;
+      _includeVoiceMessages = prefs.getBool(_keyIncludeVoiceMessages) ?? false;
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
@@ -109,12 +113,27 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
+  /// Toggle Include Voice Messages & Recordings
+  Future<void> setIncludeVoiceMessages(bool value) async {
+    if (_includeVoiceMessages == value) return;
+    _includeVoiceMessages = value;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyIncludeVoiceMessages, value);
+    } catch (e) {
+      debugPrint('Error saving include voice messages setting: $e');
+    }
+  }
+
   /// Reset all settings to defaults
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.system;
     _autoPlayNext = true;
     _highQualityAudio = true;
     _keepScreenOn = false;
+    _includeVoiceMessages = false;
     notifyListeners();
 
     try {
@@ -123,6 +142,7 @@ class AppSettings extends ChangeNotifier {
       await prefs.remove(_keyAutoPlayNext);
       await prefs.remove(_keyHighQualityAudio);
       await prefs.remove(_keyKeepScreenOn);
+      await prefs.remove(_keyIncludeVoiceMessages);
     } catch (e) {
       debugPrint('Error resetting settings: $e');
     }

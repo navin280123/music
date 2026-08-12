@@ -4,6 +4,7 @@ import 'package:music/ABLooperWidget.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/LyricsService.dart';
+import 'package:music/MediaCacheService.dart';
 import 'package:music/PlaylistManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -123,5 +124,84 @@ void main() {
     expect(looper.pointA, null);
     expect(looper.pointB, null);
     expect(looper.isEnabled, false);
+  });
+
+  test('AppSettings includes and persists includeVoiceMessages toggle', () async {
+    final settings = AppSettings.instance;
+    await settings.loadSettings();
+
+    // Default should be false (voice messages filtered out)
+    expect(settings.includeVoiceMessages, false);
+
+    await settings.setIncludeVoiceMessages(true);
+    expect(settings.includeVoiceMessages, true);
+
+    await settings.setIncludeVoiceMessages(false);
+    expect(settings.includeVoiceMessages, false);
+  });
+
+  test('MediaCacheService detects voice note paths accurately', () {
+    // WhatsApp voice notes
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/WhatsApp/Media/WhatsApp Voice Notes/PTT-20240101-WA0001.opus'),
+      true,
+    );
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/WhatsApp/Media/WhatsApp Audio/AUD-20240101-WA0002.mp3'),
+      true,
+    );
+    // Telegram / Recordings
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/Telegram/Telegram Audio/voice_message_123.ogg'),
+      true,
+    );
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/Recordings/call_recording_01.m4a'),
+      true,
+    );
+
+    // Regular Music files
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/Music/Coldplay - Yellow.mp3'),
+      false,
+    );
+    expect(
+      MediaCacheService.isVoiceNotePath(
+          '/storage/emulated/0/Download/Imagine Dragons - Believer.flac'),
+      false,
+    );
+  });
+
+  test('MediaCacheService caches tracks and filters voice messages based on setting', () async {
+    final cache = MediaCacheService.instance;
+    await cache.init();
+
+    final testPaths = [
+      '/storage/emulated/0/Music/Song A.mp3',
+      '/storage/emulated/0/Music/Song B.mp3',
+      '/storage/emulated/0/WhatsApp/Media/WhatsApp Voice Notes/PTT-1.opus',
+    ];
+
+    await cache.updateCacheFromScannedFiles(testPaths);
+
+    expect(cache.totalCount, 3);
+    expect(cache.musicTracksCount, 2);
+    expect(cache.voiceMessagesCount, 1);
+
+    // Filtered by default (includeVoiceMessages: false)
+    final filteredPaths = cache.getFilePaths(includeVoiceMessages: false);
+    expect(filteredPaths.length, 2);
+    expect(filteredPaths.contains('/storage/emulated/0/Music/Song A.mp3'), true);
+    expect(filteredPaths.contains('/storage/emulated/0/Music/Song B.mp3'), true);
+    expect(filteredPaths.contains('/storage/emulated/0/WhatsApp/Media/WhatsApp Voice Notes/PTT-1.opus'), false);
+
+    // All tracks when includeVoiceMessages: true
+    final allPaths = cache.getFilePaths(includeVoiceMessages: true);
+    expect(allPaths.length, 3);
   });
 }

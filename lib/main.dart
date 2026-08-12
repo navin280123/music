@@ -5,7 +5,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
+import 'package:music/CastService.dart';
 import 'package:music/MainScreen.dart';
+import 'package:music/MediaCacheService.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -13,6 +15,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await AppSettings.instance.loadSettings();
+  await MediaCacheService.instance.init();
+  await CastService.instance.init();
 
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
@@ -55,7 +59,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   bool loading = true;
-  List<FileSystemEntity> audioFiles = [];
+  List<String> audioFiles = [];
   late AnimationController _animationController;
 
   @override
@@ -70,13 +74,44 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> startAppSetup() async {
+    final cache = MediaCacheService.instance;
+    final includeVoice = AppSettings.instance.includeVoiceMessages;
+
+    // 1. Check if we have cached tracks for instant startup
+    if (cache.cachedTracks.isNotEmpty) {
+      audioFiles = cache.getFilePaths(includeVoiceMessages: includeVoice);
+      loading = false;
+
+      // Quick smooth transition (500ms) to ensure smooth render
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        navigateToMainScreenIfReady();
+      }
+
+      // Background synchronization without blocking UI
+      unawaited(_backgroundSync());
+      return;
+    }
+
+    // 2. First time run or empty cache: request permissions & scan
     await _waitForSplashTime();
     await _requestPermissionAndLoadFiles();
     navigateToMainScreenIfReady();
   }
 
+  Future<void> _backgroundSync() async {
+    try {
+      if (await Permission.audio.isGranted ||
+          await Permission.storage.isGranted) {
+        await scanAudioFilesOnDevice(updateCache: true);
+      }
+    } catch (e) {
+      debugPrint("Background sync error: $e");
+    }
+  }
+
   Future<void> _waitForSplashTime() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 1));
   }
 
   Future<void> _requestPermissionAndLoadFiles() async {
@@ -99,7 +134,8 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (hasPermission) {
-      audioFiles = await scanAudioFilesOnDevice();
+      final entities = await scanAudioFilesOnDevice(updateCache: true);
+      audioFiles = entities.map((e) => e.path).toList();
     } else {
       debugPrint("Storage/Audio permission denied.");
     }
@@ -116,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => MainScreen(
-          audioFiles: audioFiles.map((file) => file.path).toList(),
+          audioFiles: audioFiles,
         ),
       ),
     );
@@ -192,9 +228,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-/// Global device scanner utility for audio files
-Future<List<FileSystemEntity>> scanAudioFilesOnDevice() async {
-  List<FileSystemEntity> files = [];
+/// Global device scanner utility for audio files with metadata caching & filtering
+Future<List<FileSystemEntity>> scanAudioFilesOnDevice({
+  bool updateCache = true,
+  bool? includeVoiceMessages,
+}) async {
+  List<FileSystemEntity> allFiles = [];
   Set<String> scannedPaths = {};
 
   List<String> directoriesToSearch = [
@@ -225,11 +264,25 @@ Future<List<FileSystemEntity>> scanAudioFilesOnDevice() async {
   for (final path in directoriesToSearch) {
     Directory dir = Directory(path);
     if (dir.existsSync() && !scannedPaths.contains(dir.path)) {
-      _safeScanDirectory(dir, files, scannedPaths);
+      _safeScanDirectory(dir, allFiles, scannedPaths);
     }
   }
 
-  return files;
+  if (updateCache) {
+    final allPaths = allFiles.map((f) => f.path).toList();
+    await MediaCacheService.instance.updateCacheFromScannedFiles(allPaths);
+  }
+
+  final bool allowVoice =
+      includeVoiceMessages ?? AppSettings.instance.includeVoiceMessages;
+
+  if (allowVoice) {
+    return allFiles;
+  } else {
+    return allFiles.where((file) {
+      return !MediaCacheService.isVoiceNotePath(file.path);
+    }).toList();
+  }
 }
 
 void _safeScanDirectory(

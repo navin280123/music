@@ -4,6 +4,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:music/ABLooperWidget.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/CastService.dart';
+import 'package:music/CastSheet.dart';
 import 'package:music/ColorPaletteService.dart';
 import 'package:music/DriveModeScreen.dart';
 import 'package:music/EqualizerPresetSheet.dart';
@@ -467,6 +469,32 @@ class _PlayScreenState extends State<PlayScreen>
                   children: [
                     // ── Status Badges ──────────────────────────────────
                     ListenableBuilder(
+                      listenable: CastService.instance,
+                      builder: (context, _) {
+                        final isCast = CastService.instance.isConnected;
+                        if (!isCast) return const SizedBox.shrink();
+                        return GestureDetector(
+                          onTap: () {
+                            CastSheet.show(
+                              context,
+                              currentTrackPath: currentPath,
+                              currentTrackTitle: currentSong,
+                              currentTrackArtist: 'Local Audio',
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 10.0),
+                            child: _statusBadge(
+                              icon: Icons.cast_connected_rounded,
+                              label:
+                                  'Casting to ${CastService.instance.connectedDeviceName ?? "Device"}',
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    ListenableBuilder(
                       listenable: SleepTimerService.instance,
                       builder: (context, _) {
                         final sleepActive = SleepTimerService.instance.isActive;
@@ -795,6 +823,29 @@ class _PlayScreenState extends State<PlayScreen>
                       physics: const BouncingScrollPhysics(),
                       child: Row(
                         children: [
+                          ListenableBuilder(
+                            listenable: CastService.instance,
+                            builder: (context, _) {
+                              final isCast = CastService.instance.isConnected;
+                              return _buildQuickActionBtn(
+                                icon: isCast
+                                    ? Icons.cast_connected_rounded
+                                    : Icons.cast_rounded,
+                                label: isCast ? 'Casting' : 'Cast',
+                                color: isCast
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF6366F1),
+                                onTap: () {
+                                  CastSheet.show(
+                                    context,
+                                    currentTrackPath: currentPath,
+                                    currentTrackTitle: currentSong,
+                                    currentTrackArtist: 'Local Audio',
+                                  );
+                                },
+                              );
+                            },
+                          ),
                           _buildQuickActionBtn(
                             icon: Icons.mic_external_on_rounded,
                             label: 'Lyrics',

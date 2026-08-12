@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/CastService.dart';
+import 'package:music/CastSheet.dart';
 import 'package:music/EqualizerPresetSheet.dart';
+import 'package:music/MediaCacheService.dart';
 import 'package:music/ProfileScreen.dart';
 import 'package:music/SleepTimerService.dart';
 
@@ -641,6 +645,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   AppSettings.instance.setKeepScreenOn(val);
                 },
               ),
+              Divider(color: borderCol, height: 12),
+              ListenableBuilder(
+                listenable: CastService.instance,
+                builder: (context, _) {
+                  final isCast = CastService.instance.isConnected;
+                  return _buildActionTile(
+                    context: context,
+                    icon: isCast
+                        ? Icons.cast_connected_rounded
+                        : Icons.cast_rounded,
+                    title: "Cast & Network Streaming",
+                    subtitle: isCast
+                        ? "Streaming to ${CastService.instance.connectedDeviceName}"
+                        : "Stream to Chromecast, Smart TVs & Google Nest",
+                    trailingText: isCast ? "Connected" : "Cast",
+                    onTap: () {
+                      String? trackPath;
+                      String? trackTitle;
+                      if (widget.currentlyPlayingIndex != null &&
+                          widget.currentlyPlayingIndex! >= 0 &&
+                          widget.currentlyPlayingIndex! <
+                              widget.audioFiles.length) {
+                        final item =
+                            widget.audioFiles[widget.currentlyPlayingIndex!];
+                        trackPath = item is File ? item.path : item.toString();
+                        trackTitle =
+                            trackPath.split(Platform.pathSeparator).last;
+                      }
+                      CastSheet.show(
+                        context,
+                        currentTrackPath: trackPath,
+                        currentTrackTitle: trackTitle,
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -670,7 +711,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Library & Storage",
+                "Library & Audio Scanning",
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
@@ -683,9 +724,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.library_music_rounded,
                 title: "Music Library",
                 subtitle:
-                    "${widget.audioFiles.length} tracks detected on device",
-                trailingText: "Scanned",
+                    "${widget.audioFiles.length} music tracks loaded${MediaCacheService.instance.voiceMessagesCount > 0 ? " • ${MediaCacheService.instance.voiceMessagesCount} voice notes ${AppSettings.instance.includeVoiceMessages ? "included" : "filtered"}" : ""}",
+                trailingText: "Cached",
                 onTap: null,
+              ),
+              Divider(color: borderCol, height: 12),
+              _buildSwitchTile(
+                context: context,
+                icon: Icons.record_voice_over_rounded,
+                title: "Include Voice Notes & Recordings",
+                subtitle:
+                    "Include WhatsApp voice notes, call recordings, and voice memos in your music library. (Disabled by default for clean music experience)",
+                value: AppSettings.instance.includeVoiceMessages,
+                onChanged: (val) async {
+                  await AppSettings.instance.setIncludeVoiceMessages(val);
+                  if (widget.onRescan != null) {
+                    await widget.onRescan!();
+                  }
+                },
               ),
               Divider(color: borderCol, height: 12),
               _buildActionTile(

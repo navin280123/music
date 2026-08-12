@@ -6,9 +6,12 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music/AppSettings.dart';
 import 'package:music/AppTheme.dart';
 import 'package:music/ArtworkHelper.dart';
+import 'package:music/CastService.dart';
+import 'package:music/CastSheet.dart';
 import 'package:music/ColorPaletteService.dart';
 import 'package:music/HomeScreen.dart';
 import 'package:music/LibraryScreen.dart';
+import 'package:music/MediaCacheService.dart';
 import 'package:music/PlayScreen.dart';
 import 'package:music/PlaylistManager.dart';
 import 'package:music/SearchScreen.dart';
@@ -40,14 +43,47 @@ class _MainScreenState extends State<MainScreen> {
   ConcatenatingAudioSource playlist = ConcatenatingAudioSource(children: []);
   final AudioPlayer audioPlayer = AudioPlayer();
   TrackPalette? _miniPlayerPalette;
+  bool _lastVoiceMessageSetting = false;
 
   @override
   void initState() {
     super.initState();
     _currentAudioFiles = List.from(widget.audioFiles);
+    _lastVoiceMessageSetting = AppSettings.instance.includeVoiceMessages;
     _setupAudioPlayer();
     _setupPlaylist();
     PlaylistManager.instance.init();
+
+    AppSettings.instance.addListener(_handleSettingsChanged);
+    MediaCacheService.instance.addListener(_handleCacheChanged);
+  }
+
+  void _handleSettingsChanged() {
+    final currentSetting = AppSettings.instance.includeVoiceMessages;
+    if (currentSetting != _lastVoiceMessageSetting) {
+      _lastVoiceMessageSetting = currentSetting;
+      final updatedPaths = MediaCacheService.instance
+          .getFilePaths(includeVoiceMessages: currentSetting);
+      if (updatedPaths.isNotEmpty) {
+        setState(() {
+          _currentAudioFiles = updatedPaths;
+        });
+        _setupPlaylist();
+      }
+    }
+  }
+
+  void _handleCacheChanged() {
+    if (MediaCacheService.instance.cachedTracks.isNotEmpty) {
+      final updatedPaths = MediaCacheService.instance.getFilePaths(
+          includeVoiceMessages: AppSettings.instance.includeVoiceMessages);
+      if (mounted) {
+        setState(() {
+          _currentAudioFiles = updatedPaths;
+        });
+        _setupPlaylist();
+      }
+    }
   }
 
   Future<void> _setupPlaylist() async {
@@ -241,7 +277,10 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<void> rescanLibrary() async {
     try {
-      final updatedFiles = await scanAudioFilesOnDevice();
+      final updatedFiles = await scanAudioFilesOnDevice(
+        updateCache: true,
+        includeVoiceMessages: AppSettings.instance.includeVoiceMessages,
+      );
       final filePaths = updatedFiles.map((f) => f.path).toList();
 
       if (mounted) {
@@ -254,6 +293,28 @@ class _MainScreenState extends State<MainScreen> {
     } catch (e) {
       debugPrint("Error rescanning library: $e");
     }
+  }
+
+  void _openCastSheet() {
+    String? trackPath;
+    String? trackTitle;
+    String? trackArtist;
+
+    if (_currentlyPlayingIndex != null &&
+        _currentlyPlayingIndex! >= 0 &&
+        _currentlyPlayingIndex! < _currentAudioFiles.length) {
+      trackPath = _currentAudioFiles[_currentlyPlayingIndex!];
+      final meta = _fetchMetadataFromPath(trackPath);
+      trackTitle = meta['title'];
+      trackArtist = meta['artist'];
+    }
+
+    CastSheet.show(
+      context,
+      currentTrackPath: trackPath,
+      currentTrackTitle: trackTitle,
+      currentTrackArtist: trackArtist,
+    );
   }
 
   void _openSearchScreen() {
@@ -617,6 +678,29 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                   const Spacer(),
+                  ListenableBuilder(
+                    listenable: CastService.instance,
+                    builder: (context, _) {
+                      final isCastActive =
+                          CastService.instance.isConnected;
+                      final primaryAccent = isDark
+                          ? const Color(0xFF818CF8)
+                          : AppTheme.lightPrimary;
+
+                      return IconButton(
+                        icon: Icon(
+                          isCastActive
+                              ? Icons.cast_connected_rounded
+                              : Icons.cast_rounded,
+                          color: isCastActive ? primaryAccent : iconCol,
+                        ),
+                        onPressed: _openCastSheet,
+                        tooltip: isCastActive
+                            ? 'Casting to ${CastService.instance.connectedDeviceName}'
+                            : 'Cast to Device',
+                      );
+                    },
+                  ),
                   IconButton(
                     icon: Icon(Icons.search_rounded, color: iconCol),
                     onPressed: _openSearchScreen,
@@ -700,6 +784,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    AppSettings.instance.removeListener(_handleSettingsChanged);
+    MediaCacheService.instance.removeListener(_handleCacheChanged);
     audioPlayer.dispose();
     super.dispose();
   }
