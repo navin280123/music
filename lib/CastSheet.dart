@@ -1,4 +1,3 @@
-import 'package:cast/cast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:music/AppTheme.dart';

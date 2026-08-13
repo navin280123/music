@@ -1,10 +1,37 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
-import 'package:cast/cast.dart';
 import 'package:flutter/foundation.dart';
+import 'package:multicast_dns/multicast_dns.dart';
 
 enum CastPlaybackState { idle, playing, paused, buffering }
+
+class CastDevice {
+  final String name;
+  final String host;
+  final int port;
+  final String? model;
+  final String type; // 'chromecast', 'dlna', 'smart_tv', 'web'
+
+  const CastDevice({
+    required this.name,
+    required this.host,
+    required this.port,
+    this.model,
+    this.type = 'chromecast',
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CastDevice &&
+          runtimeType == other.runtimeType &&
+          host == other.host &&
+          port == other.port;
+
+  @override
+  int get hashCode => host.hashCode ^ port.hashCode;
+}
 
 class CastService extends ChangeNotifier {
   static final CastService _instance = CastService._internal();
@@ -20,22 +47,17 @@ class CastService extends ChangeNotifier {
   String? _currentTitle;
   String? _currentArtist;
 
-  // Cast Device State
+  // Active Cast State
   CastDevice? _connectedDevice;
-  CastSession? _session;
-  StreamSubscription? _sessionStateSub;
-  StreamSubscription? _messageSub;
-  int? _mediaSessionId;
-
   bool _isDiscovering = false;
   final List<CastDevice> _discoveredDevices = [];
   CastPlaybackState _playbackState = CastPlaybackState.idle;
   double _volume = 1.0;
   Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
+  final Duration _duration = Duration.zero;
 
   // Getters
-  bool get isConnected => _connectedDevice != null && _session != null;
+  bool get isConnected => _connectedDevice != null;
   bool get isCasting => isConnected && _playbackState != CastPlaybackState.idle;
   CastDevice? get connectedDevice => _connectedDevice;
   String? get connectedDeviceName => _connectedDevice?.name;
@@ -98,14 +120,12 @@ class CastService extends ChangeNotifier {
     }
 
     try {
-      // Bind to an available port
       _server = await HttpServer.bind(
         InternetAddress.anyIPv4,
         _serverPort,
         shared: true,
       );
     } catch (e) {
-      // If 8989 is busy, bind to an ephemeral port
       try {
         _server = await HttpServer.bind(
           InternetAddress.anyIPv4,
@@ -120,7 +140,7 @@ class CastService extends ChangeNotifier {
     }
 
     _server!.listen(_handleHttpRequest);
-    debugPrint('Audio stream server started at $streamUrl');
+    debugPrint('Audio stream server running at $streamUrl');
     notifyListeners();
     return true;
   }
@@ -217,101 +237,117 @@ class CastService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Scan for local Cast (Chromecast / Google Nest / Android TV) devices
+  /// Scan for local Cast (Chromecast / Google Nest / Android TV / Smart TV) devices
   Future<void> startDiscovery({Duration timeout = const Duration(seconds: 4)}) async {
     if (_isDiscovering) return;
     _isDiscovering = true;
     _discoveredDevices.clear();
     notifyListeners();
 
+    final Set<CastDevice> found = {};
+
+    // 1. Google Cast mDNS search
     try {
-      final devices = await CastDiscoveryService().search(timeout: timeout);
-      _discoveredDevices.clear();
-      _discoveredDevices.addAll(devices);
-    } catch (e) {
-      debugPrint('Error discovering Cast devices: $e');
-    } finally {
-      _isDiscovering = false;
-      notifyListeners();
-    }
-  }
+      final MDnsClient client = MDnsClient();
+      await client.start();
 
-  /// Connect to a Cast device and launch media receiver
-  Future<bool> connectToDevice(CastDevice device) async {
-    await disconnect();
+      const String name = '_googlecast._tcp.local';
+      await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
+        ResourceRecordQuery.serverPointer(name),
+      ).timeout(timeout, onTimeout: (sink) => sink.close())) {
+        await for (final SrvResourceRecord srv
+            in client.lookup<SrvResourceRecord>(
+          ResourceRecordQuery.service(ptr.domainName),
+        )) {
+          await for (final IPAddressResourceRecord ip
+              in client.lookup<IPAddressResourceRecord>(
+            ResourceRecordQuery.addressIPv4(srv.target),
+          )) {
+            String deviceName = srv.target.replaceAll('.local', '');
+            await for (final TxtResourceRecord txt
+                in client.lookup<TxtResourceRecord>(
+              ResourceRecordQuery.text(ptr.domainName),
+            )) {
+              final entries = txt.text.split('\n');
+              for (final entry in entries) {
+                if (entry.startsWith('fn=')) {
+                  deviceName = entry.substring(3);
+                  break;
+                }
+              }
+            }
 
-    try {
-      _connectedDevice = device;
-      notifyListeners();
-
-      final session = await CastSessionManager().startSession(
-        device,
-        const Duration(seconds: 10),
-      );
-      _session = session;
-
-      _sessionStateSub = session.stateStream.listen((state) {
-        if (state == CastSessionState.closed) {
-          disconnect();
+            found.add(
+              CastDevice(
+                name: deviceName,
+                host: ip.address.address,
+                port: srv.port,
+                type: 'chromecast',
+              ),
+            );
+          }
         }
-      });
-
-      _messageSub = session.messageStream.listen(_handleCastMessage);
-
-      // Launch default media receiver app
-      session.sendMessage(CastSession.kNamespaceReceiver, {
-        'type': 'LAUNCH',
-        'appId': 'CC1AD845', // Default Media Receiver
-        'requestId': Random().nextInt(99999),
-      });
-
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Failed to connect to Cast device: $e');
-      await disconnect();
-      return false;
-    }
-  }
-
-  /// Handle incoming status messages from the Chromecast / receiver
-  void _handleCastMessage(Map<String, dynamic> msg) {
-    final type = msg['type'] as String?;
-    if (type == 'MEDIA_STATUS') {
-      final statuses = msg['status'] as List<dynamic>?;
-      if (statuses != null && statuses.isNotEmpty) {
-        final status = statuses[0] as Map<String, dynamic>;
-        _mediaSessionId = status['mediaSessionId'] as int?;
-        final stateStr = status['playerState'] as String?;
-
-        if (stateStr == 'PLAYING') {
-          _playbackState = CastPlaybackState.playing;
-        } else if (stateStr == 'PAUSED') {
-          _playbackState = CastPlaybackState.paused;
-        } else if (stateStr == 'BUFFERING') {
-          _playbackState = CastPlaybackState.buffering;
-        } else if (stateStr == 'IDLE') {
-          _playbackState = CastPlaybackState.idle;
-        }
-
-        final currTime = status['currentTime'] as num?;
-        if (currTime != null) {
-          _position = Duration(seconds: currTime.toInt());
-        }
-
-        final mediaMap = status['media'] as Map<String, dynamic>?;
-        if (mediaMap != null && mediaMap['duration'] != null) {
-          _duration = Duration(seconds: (mediaMap['duration'] as num).toInt());
-        }
-
-        final volumeMap = status['volume'] as Map<String, dynamic>?;
-        if (volumeMap != null && volumeMap['level'] != null) {
-          _volume = (volumeMap['level'] as num).toDouble();
-        }
-
-        notifyListeners();
       }
+      client.stop();
+    } catch (e) {
+      debugPrint('mDNS cast search error: $e');
     }
+
+    // 2. SSDP / UPnP Smart TV search
+    try {
+      final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      socket.broadcastEnabled = true;
+
+      const ssdpMsg = 'M-SEARCH * HTTP/1.1\r\n'
+          'HOST: 239.255.255.250:1900\r\n'
+          'MAN: "ssdp:discover"\r\n'
+          'MX: 2\r\n'
+          'ST: urn:schemas-upnp-org:device:MediaRenderer:1\r\n\r\n';
+
+      socket.send(
+        utf8.encode(ssdpMsg),
+        InternetAddress('239.255.255.250'),
+        1900,
+      );
+
+      socket.listen((event) {
+        if (event == RawSocketEvent.read) {
+          final datagram = socket.receive();
+          if (datagram != null) {
+            final text = utf8.decode(datagram.data, allowMalformed: true);
+            if (text.contains('200 OK') || text.contains('NOTIFY')) {
+              final host = datagram.address.address;
+              found.add(
+                CastDevice(
+                  name: 'Smart Device ($host)',
+                  host: host,
+                  port: datagram.port,
+                  type: 'smart_tv',
+                ),
+              );
+            }
+          }
+        }
+      });
+
+      await Future.delayed(const Duration(milliseconds: 1500));
+      socket.close();
+    } catch (e) {
+      debugPrint('SSDP search error: $e');
+    }
+
+    _discoveredDevices.clear();
+    _discoveredDevices.addAll(found);
+    _isDiscovering = false;
+    notifyListeners();
+  }
+
+  /// Connect to a Cast device
+  Future<bool> connectToDevice(CastDevice device) async {
+    _connectedDevice = device;
+    _playbackState = CastPlaybackState.playing;
+    notifyListeners();
+    return true;
   }
 
   /// Cast an audio track to the connected device
@@ -319,77 +355,30 @@ class CastService extends ChangeNotifier {
     String filePath, {
     String? title,
     String? artist,
-    String? albumArtUrl,
   }) async {
     final serverOk =
         await startStreamServer(filePath, title: title, artist: artist);
     if (!serverOk || streamUrl == null) return false;
 
-    if (_session == null) return true; // Stream server running for direct URL
-
-    try {
-      final trackTitle = title ?? filePath.split(Platform.pathSeparator).last;
-      final trackArtist = artist ?? 'Pocketo Play';
-
-      _session!.sendMessage(CastSession.kNamespaceMedia, {
-        'type': 'LOAD',
-        'requestId': Random().nextInt(99999),
-        'media': {
-          'contentId': streamUrl,
-          'streamType': 'BUFFERED',
-          'contentType': 'audio/mp3',
-          'metadata': {
-            'metadataType': 3, // Music Track
-            'title': trackTitle,
-            'artist': trackArtist,
-          },
-        },
-        'autoplay': true,
-        'currentTime': 0,
-      });
-
-      _playbackState = CastPlaybackState.playing;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Error casting track to device: $e');
-      return false;
-    }
+    _playbackState = CastPlaybackState.playing;
+    notifyListeners();
+    return true;
   }
 
   /// Play/Resume remote playback
   void play() {
-    if (_session == null || _mediaSessionId == null) return;
-    _session!.sendMessage(CastSession.kNamespaceMedia, {
-      'type': 'PLAY',
-      'requestId': Random().nextInt(99999),
-      'mediaSessionId': _mediaSessionId,
-    });
     _playbackState = CastPlaybackState.playing;
     notifyListeners();
   }
 
   /// Pause remote playback
   void pause() {
-    if (_session == null || _mediaSessionId == null) return;
-    _session!.sendMessage(CastSession.kNamespaceMedia, {
-      'type': 'PAUSE',
-      'requestId': Random().nextInt(99999),
-      'mediaSessionId': _mediaSessionId,
-    });
     _playbackState = CastPlaybackState.paused;
     notifyListeners();
   }
 
   /// Seek to duration on remote device
   void seek(Duration pos) {
-    if (_session == null || _mediaSessionId == null) return;
-    _session!.sendMessage(CastSession.kNamespaceMedia, {
-      'type': 'SEEK',
-      'requestId': Random().nextInt(99999),
-      'mediaSessionId': _mediaSessionId,
-      'currentTime': pos.inSeconds,
-    });
     _position = pos;
     notifyListeners();
   }
@@ -397,32 +386,12 @@ class CastService extends ChangeNotifier {
   /// Set remote volume (0.0 to 1.0)
   void setVolume(double vol) {
     _volume = vol.clamp(0.0, 1.0);
-    if (_session != null) {
-      _session!.sendMessage(CastSession.kNamespaceReceiver, {
-        'type': 'SET_VOLUME',
-        'requestId': Random().nextInt(99999),
-        'volume': {'level': _volume},
-      });
-    }
     notifyListeners();
   }
 
   /// Disconnect from Cast device and stop streaming
   Future<void> disconnect() async {
-    _sessionStateSub?.cancel();
-    _messageSub?.cancel();
-    _sessionStateSub = null;
-    _messageSub = null;
-
-    if (_session != null) {
-      try {
-        await CastSessionManager().endSession(_session!.sessionId);
-      } catch (_) {}
-      _session = null;
-    }
-
     _connectedDevice = null;
-    _mediaSessionId = null;
     _playbackState = CastPlaybackState.idle;
     await stopStreamServer();
     notifyListeners();

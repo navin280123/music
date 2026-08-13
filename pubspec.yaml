@@ -45,8 +45,7 @@ dependencies:
   shared_preferences: ^2.5.5
   palette_generator: ^0.3.3
   share_plus: ^10.0.0
-  cast: ^2.1.0
-
+  multicast_dns: ^0.3.3+1
 dev_dependencies:
   flutter_test:
     sdk: flutter
