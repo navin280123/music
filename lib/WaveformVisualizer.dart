@@ -182,13 +182,15 @@ class _SpectrumPainter extends CustomPainter {
       double barHeight;
 
       if (isPlaying) {
-        // Simulate multi-frequency spectrum response in pure math — no object allocation
-        final f1 = math.sin(t * math.pi * 2 * 1.3 + fraction * math.pi * 3.5);
-        final f2 = math.sin(t * math.pi * 2 * 2.1 + fraction * math.pi * 6.0);
-        final f3 = math.sin(t * math.pi * 2 * 3.7 + fraction * math.pi * 1.5);
-        // Bass-heavy shaping (lower-index bars are taller)
-        final shape = math.exp(-fraction * 1.5) * 0.6 + 0.4;
-        final raw = ((f1 + f2 * 0.5 + f3 * 0.25) / 1.75 + 1) / 2;
+        // Multi-harmonic spectrum simulation with non-harmonic prime frequencies
+        final f1 = math.sin(t * math.pi * 2 * 1.37 + fraction * 4.1);
+        final f2 = math.cos(t * math.pi * 2 * 2.83 - fraction * 7.3);
+        final f3 = math.sin(t * math.pi * 2 * 0.59 + fraction * 2.7);
+        final f4 = math.sin(t * math.pi * 2 * 4.19 + fraction * 11.2);
+
+        // Bass-heavy shaping (lower-frequency/bass bars are taller)
+        final shape = math.exp(-fraction * 1.4) * 0.65 + 0.35;
+        final raw = ((f1 + f2 * 0.6 + f3 * 0.4 + f4 * 0.25) / 2.25 + 1) / 2;
         barHeight = (raw * shape).clamp(0.08, 1.0) * size.height;
       } else {
         barHeight =

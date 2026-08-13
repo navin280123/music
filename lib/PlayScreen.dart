@@ -14,7 +14,6 @@ import 'package:music/PlaylistManager.dart';
 import 'package:music/ShareCardWidget.dart';
 import 'package:music/SleepTimerService.dart';
 import 'package:music/TagEditorSheet.dart';
-import 'package:music/WaveformVisualizer.dart';
 
 class PlayScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
@@ -52,11 +51,8 @@ class PlayScreen extends StatefulWidget {
   State<PlayScreen> createState() => _PlayScreenState();
 }
 
-class _PlayScreenState extends State<PlayScreen>
-    with SingleTickerProviderStateMixin {
+class _PlayScreenState extends State<PlayScreen> {
   double sliderValue = 0;
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
 
   // Dynamic color palette
   TrackPalette? _palette;
@@ -65,13 +61,6 @@ class _PlayScreenState extends State<PlayScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1400),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.02).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
 
     widget.audioPlayer.positionStream.listen((position) {
       if (mounted) {
@@ -80,25 +69,14 @@ class _PlayScreenState extends State<PlayScreen>
         });
       }
     });
-    _updateAnimationState();
     _refreshPalette();
   }
 
   @override
   void didUpdateWidget(covariant PlayScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isPlaying != widget.isPlaying) _updateAnimationState();
     if (oldWidget.currentlyPlayingIndex != widget.currentlyPlayingIndex) {
       _refreshPalette();
-    }
-  }
-
-  void _updateAnimationState() {
-    if (widget.isPlaying) {
-      _controller.repeat(reverse: true);
-    } else {
-      _controller.animateTo(0.0,
-          duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
     }
   }
 
@@ -137,8 +115,8 @@ class _PlayScreenState extends State<PlayScreen>
         final sheetBg = isDark ? const Color(0xFF1E1E20) : Colors.white;
         final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
         final subTextCol = isDark ? Colors.white54 : const Color(0xFF64748B);
-        final activeCol =
-            _palette?.accent ?? (isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary);
+        final activeCol = _palette?.accent ??
+            (isDark ? const Color(0xFF818CF8) : AppTheme.lightPrimary);
 
         return ListenableBuilder(
           listenable: SleepTimerService.instance,
@@ -148,13 +126,15 @@ class _PlayScreenState extends State<PlayScreen>
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
                 color: sheetBg,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 44, height: 5,
+                    width: 44,
+                    height: 5,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.white24 : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(3),
@@ -171,7 +151,8 @@ class _PlayScreenState extends State<PlayScreen>
                             color: activeCol.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Icon(Icons.bedtime_rounded, color: activeCol, size: 22),
+                          child: Icon(Icons.bedtime_rounded,
+                              color: activeCol, size: 22),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -179,13 +160,17 @@ class _PlayScreenState extends State<PlayScreen>
                           children: [
                             Text('Sleep Timer',
                                 style: TextStyle(
-                                    color: textCol, fontSize: 17, fontWeight: FontWeight.bold)),
+                                    color: textCol,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold)),
                             Text(
                               timerService.isActive
                                   ? 'Active: ${timerService.formattedRemainingTime}'
                                   : 'Stops playback with gentle fade-out',
                               style: TextStyle(
-                                color: timerService.isActive ? activeCol : subTextCol,
+                                color: timerService.isActive
+                                    ? activeCol
+                                    : subTextCol,
                                 fontSize: 12,
                                 fontWeight: timerService.isActive
                                     ? FontWeight.bold
@@ -235,8 +220,10 @@ class _PlayScreenState extends State<PlayScreen>
                         onPressed: () {
                           timerService.setEndOfTrackMode(widget.audioPlayer);
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                            content: Text('Sleep timer will stop at the end of this track'),
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content: Text(
+                                'Sleep timer will stop at the end of this track'),
                             behavior: SnackBarBehavior.floating,
                           ));
                         },
@@ -302,7 +289,8 @@ class _PlayScreenState extends State<PlayScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: isDark ? Colors.white24 : Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
@@ -315,7 +303,9 @@ class _PlayScreenState extends State<PlayScreen>
                   Text(
                     'Track Queue (${widget.audioFiles.length})',
                     style: TextStyle(
-                        color: textCol, fontSize: 18, fontWeight: FontWeight.bold),
+                        color: textCol,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     icon: Icon(Icons.close_rounded, color: subTextCol),
@@ -353,8 +343,11 @@ class _PlayScreenState extends State<PlayScreen>
                               color: Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                               child: ListTile(
-                                leading: ArtworkHelper.buildArtworkWidget(filePath,
-                                    width: 40, height: 40, borderRadius: 8),
+                                leading: ArtworkHelper.buildArtworkWidget(
+                                    filePath,
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 8),
                                 title: Text(songName,
                                     style: TextStyle(
                                       color: isCurrent ? activeAccent : textCol,
@@ -389,8 +382,7 @@ class _PlayScreenState extends State<PlayScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
-    final scaffoldBg =
-        isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
+    final scaffoldBg = isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold;
 
     // Dynamic accent from palette, fall back to theme
     final activeCol = _palette?.accent ??
@@ -408,9 +400,8 @@ class _PlayScreenState extends State<PlayScreen>
         currentPath != null && PlaylistManager.instance.isFavorite(currentPath);
     final primaryBtnBg = isDark ? Colors.white : AppTheme.lightPrimary;
     final primaryBtnIcon = isDark ? Colors.black : Colors.white;
-    final bpm = widget.duration.inSeconds > 0
-        ? _estimateBpm(widget.duration)
-        : 0;
+    final bpm =
+        widget.duration.inSeconds > 0 ? _estimateBpm(widget.duration) : 0;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -435,13 +426,13 @@ class _PlayScreenState extends State<PlayScreen>
 
           // ── Main scrollable content ────────────────────────────────────
           SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             child: Padding(
               padding: const EdgeInsets.only(
                   left: 16.0, right: 16.0, top: 12.0, bottom: 100.0),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18.0, vertical: 20.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 18.0, vertical: 20.0),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.black.withValues(alpha: 0.35)
@@ -472,33 +463,7 @@ class _PlayScreenState extends State<PlayScreen>
                 child: Column(
                   children: [
                     // ── Status Badges ──────────────────────────────────
-                    ListenableBuilder(
-                      listenable: CastService.instance,
-                      builder: (context, _) {
-                        final isCast = CastService.instance.isConnected;
-                        if (!isCast) return const SizedBox.shrink();
-                        return GestureDetector(
-                          onTap: () {
-                            CastSheet.show(
-                              context,
-                              currentTrackPath: currentPath,
-                              currentTrackTitle: currentSong,
-                              currentTrackArtist: 'Local Audio',
-                              startPosition: widget.audioPlayer.position,
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 10.0),
-                            child: _statusBadge(
-                              icon: Icons.cast_connected_rounded,
-                              label:
-                                  'Casting to ${CastService.instance.connectedDeviceName ?? "Device"}',
-                              color: const Color(0xFF10B981),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+
                     ListenableBuilder(
                       listenable: SleepTimerService.instance,
                       builder: (context, _) {
@@ -515,7 +480,8 @@ class _PlayScreenState extends State<PlayScreen>
                               if (sleepActive)
                                 _statusBadge(
                                   icon: Icons.bedtime_rounded,
-                                  label: SleepTimerService.instance.formattedRemainingTime,
+                                  label: SleepTimerService
+                                      .instance.formattedRemainingTime,
                                   color: const Color(0xFF10B981),
                                 ),
                               if (looperActive)
@@ -530,75 +496,47 @@ class _PlayScreenState extends State<PlayScreen>
                       },
                     ),
 
-                    // ── Ambient Glow + Album Art + Spectrum Visualizer ──
+                    // ── Album Art Display Card ─────────────────────────────────
                     SizedBox(
-                      height: 260,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Ambient glow
-                          if (widget.isPlaying)
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 600),
-                              width: 220,
-                              height: 220,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: activeCol.withValues(alpha: 0.40),
-                                    blurRadius: 55,
-                                    spreadRadius: 10,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          // Album art
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ScaleTransition(
-                                scale: _scaleAnimation,
-                                child: currentPath != null
-                                    ? ArtworkHelper.buildArtworkWidget(
-                                        currentPath,
-                                        width: 210,
-                                        height: 210,
-                                        borderRadius: 20.0,
-                                      )
-                                    : Container(
-                                        width: 210,
-                                        height: 210,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF282828)
-                                              : const Color(0xFFE2E8F0),
-                                          borderRadius:
-                                              BorderRadius.circular(20.0),
-                                        ),
-                                        child: Icon(
-                                          Icons.music_note_rounded,
-                                          size: 80.0,
-                                          color: isDark
-                                              ? Colors.white38
-                                              : Colors.grey.shade400,
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 10),
-
-                              // ── Spectrum Visualizer ──────────────────
-                              WaveformVisualizer(
-                                isPlaying: widget.isPlaying,
-                                barCount: 32,
-                                height: 34,
-                                barWidth: 3.2,
-                                style: VisualizerStyle.spectrum,
+                      height: 250,
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: activeCol.withValues(
+                                    alpha: widget.isPlaying ? 0.45 : 0.20),
+                                blurRadius: 28,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
-                        ],
+                          child: currentPath != null
+                              ? ArtworkHelper.buildArtworkWidget(
+                                  currentPath,
+                                  width: 220,
+                                  height: 220,
+                                  borderRadius: 24.0,
+                                )
+                              : Container(
+                                  width: 220,
+                                  height: 220,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF282828)
+                                        : const Color(0xFFE2E8F0),
+                                    borderRadius: BorderRadius.circular(24.0),
+                                  ),
+                                  child: Icon(
+                                    Icons.music_note_rounded,
+                                    size: 80.0,
+                                    color: isDark
+                                        ? Colors.white38
+                                        : Colors.grey.shade400,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14.0),
@@ -636,10 +574,12 @@ class _PlayScreenState extends State<PlayScreen>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 7, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: activeCol.withValues(alpha: 0.15),
+                                        color:
+                                            activeCol.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                            color: activeCol.withValues(alpha: 0.35)),
+                                            color: activeCol.withValues(
+                                                alpha: 0.35)),
                                       ),
                                       child: Text(
                                         '~$bpm BPM',
@@ -663,9 +603,8 @@ class _PlayScreenState extends State<PlayScreen>
                               isFav
                                   ? Icons.favorite_rounded
                                   : Icons.favorite_border_rounded,
-                              color: isFav
-                                  ? const Color(0xFFF43F5E)
-                                  : subTextCol,
+                              color:
+                                  isFav ? const Color(0xFFF43F5E) : subTextCol,
                               size: 26,
                             ),
                             tooltip: isFav
@@ -719,8 +658,7 @@ class _PlayScreenState extends State<PlayScreen>
                                     ? Colors.white24
                                     : const Color(0xFFCBD5E1),
                                 thumbColor: activeCol,
-                                overlayColor:
-                                    activeCol.withValues(alpha: 0.15),
+                                overlayColor: activeCol.withValues(alpha: 0.15),
                                 trackHeight: 3.5,
                               ),
                               child: Slider(
@@ -740,15 +678,15 @@ class _PlayScreenState extends State<PlayScreen>
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12.0),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _formatDuration(Duration(
-                                        seconds: sliderValue.toInt())),
+                                    _formatDuration(
+                                        Duration(seconds: sliderValue.toInt())),
                                     style: TextStyle(
                                         color: subTextCol, fontSize: 12),
                                   ),
@@ -817,8 +755,8 @@ class _PlayScreenState extends State<PlayScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: primaryBtnBg.withValues(
-                                            alpha: 0.4),
+                                        color:
+                                            primaryBtnBg.withValues(alpha: 0.4),
                                         blurRadius: 14,
                                         offset: const Offset(0, 4),
                                       ),
@@ -1000,9 +938,8 @@ class _PlayScreenState extends State<PlayScreen>
     required VoidCallback onTap,
   }) {
     final isDark = AppTheme.isDark(context);
-    final cardBg = isDark
-        ? Colors.black.withValues(alpha: 0.35)
-        : const Color(0xFFF1F5F9);
+    final cardBg =
+        isDark ? Colors.black.withValues(alpha: 0.35) : const Color(0xFFF1F5F9);
     final textCol = AppTheme.textPrimaryColor(context);
 
     return Container(
@@ -1042,12 +979,6 @@ class _PlayScreenState extends State<PlayScreen>
         ? '$hours:$minutes:$seconds'
         : '$minutes:$seconds';
   }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1079,8 +1010,7 @@ class _PlayScreenCastController extends StatefulWidget {
       _PlayScreenCastControllerState();
 }
 
-class _PlayScreenCastControllerState
-    extends State<_PlayScreenCastController> {
+class _PlayScreenCastControllerState extends State<_PlayScreenCastController> {
   double? _dragVal;
 
   String _fmt(Duration d) {
@@ -1141,10 +1071,8 @@ class _PlayScreenCastControllerState
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             trackHeight: 3.5,
-            thumbShape:
-                const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-            overlayShape:
-                const RoundSliderOverlayShape(overlayRadius: 14.0),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14.0),
             activeTrackColor: widget.activeCol,
             inactiveTrackColor:
                 widget.isDark ? Colors.white24 : const Color(0xFFCBD5E1),
@@ -1153,9 +1081,7 @@ class _PlayScreenCastControllerState
           ),
           child: Slider(
             value: sliderVal,
-            onChanged: hasDur
-                ? (v) => setState(() => _dragVal = v)
-                : null,
+            onChanged: hasDur ? (v) => setState(() => _dragVal = v) : null,
             onChangeEnd: hasDur
                 ? (v) {
                     cs.seek(Duration(
@@ -1175,8 +1101,7 @@ class _PlayScreenCastControllerState
               Text(
                 _fmt(_dragVal != null && hasDur
                     ? Duration(
-                        milliseconds:
-                            (_dragVal! * dur.inMilliseconds).round())
+                        milliseconds: (_dragVal! * dur.inMilliseconds).round())
                     : pos),
                 style: TextStyle(color: widget.subTextCol, fontSize: 12),
               ),
@@ -1278,16 +1203,15 @@ class _PlayScreenCastControllerState
         Row(
           children: [
             const SizedBox(width: 8),
-            Icon(Icons.volume_down_rounded,
-                size: 18, color: widget.subTextCol),
+            Icon(Icons.volume_down_rounded, size: 18, color: widget.subTextCol),
             Expanded(
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 2.5,
-                  thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 5),
-                  overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 11),
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 5),
+                  overlayShape:
+                      const RoundSliderOverlayShape(overlayRadius: 11),
                   activeTrackColor: widget.activeCol,
                   inactiveTrackColor:
                       widget.isDark ? Colors.white24 : Colors.black12,
@@ -1299,8 +1223,7 @@ class _PlayScreenCastControllerState
                 ),
               ),
             ),
-            Icon(Icons.volume_up_rounded,
-                size: 18, color: widget.subTextCol),
+            Icon(Icons.volume_up_rounded, size: 18, color: widget.subTextCol),
             const SizedBox(width: 8),
           ],
         ),

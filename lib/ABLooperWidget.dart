@@ -291,8 +291,10 @@ class ABLooperSheet extends StatelessWidget {
                       ),
                       Switch(
                         value: looper.isEnabled,
-                        activeThumbColor: activeCol,
-                        activeTrackColor: activeCol.withValues(alpha: 0.4),
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: activeCol,
+                        inactiveTrackColor: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE2E8F0),
+                        inactiveThumbColor: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B),
                         onChanged: (_) => looper.toggleEnabled(),
                       ),
                     ],

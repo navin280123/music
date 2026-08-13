@@ -909,16 +909,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        Switch(
+        _buildCustomSwitch(
           value: value,
           onChanged: onChanged,
-          activeThumbColor: Colors.white,
-          activeTrackColor:
-              isDark ? const Color(0xFF3A3A3C) : AppTheme.lightPrimary,
-          inactiveTrackColor:
-              isDark ? const Color(0xFF282828) : const Color(0xFFE2E8F0),
+          isDark: isDark,
         ),
       ],
+    );
+  }
+
+  Widget _buildCustomSwitch({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required bool isDark,
+  }) {
+    final activeTrack = isDark ? const Color(0xFF6366F1) : AppTheme.lightPrimary;
+    final inactiveTrack = isDark ? const Color(0xFF3F3F46) : const Color(0xFFE2E8F0);
+    final inactiveBorder = isDark ? const Color(0xFF52525B) : const Color(0xFFCBD5E1);
+    final inactiveThumb = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF64748B);
+
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 48,
+        height: 26,
+        padding: const EdgeInsets.all(2.5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(13),
+          color: value ? activeTrack : inactiveTrack,
+          border: Border.all(
+            color: value ? activeTrack : inactiveBorder,
+            width: 1.5,
+          ),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: value ? Colors.white : inactiveThumb,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
