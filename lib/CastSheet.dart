@@ -7,12 +7,14 @@ class CastSheet extends StatefulWidget {
   final String? currentTrackPath;
   final String? currentTrackTitle;
   final String? currentTrackArtist;
+  final Duration startPosition;
 
   const CastSheet({
     super.key,
     this.currentTrackPath,
     this.currentTrackTitle,
     this.currentTrackArtist,
+    this.startPosition = Duration.zero,
   });
 
   static Future<void> show(
@@ -20,6 +22,7 @@ class CastSheet extends StatefulWidget {
     String? currentTrackPath,
     String? currentTrackTitle,
     String? currentTrackArtist,
+    Duration startPosition = Duration.zero,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -29,6 +32,7 @@ class CastSheet extends StatefulWidget {
         currentTrackPath: currentTrackPath,
         currentTrackTitle: currentTrackTitle,
         currentTrackArtist: currentTrackArtist,
+        startPosition: startPosition,
       ),
     );
   }
@@ -92,6 +96,7 @@ class _CastSheetState extends State<CastSheet>
           widget.currentTrackPath!,
           title: widget.currentTrackTitle,
           artist: widget.currentTrackArtist,
+          startPosition: widget.startPosition,
         );
       }
       if (!mounted) return;
@@ -410,68 +415,72 @@ class _CastSheetState extends State<CastSheet>
                                       : Colors.transparent,
                                 ),
                               ),
-                              child: ListTile(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: isThisDevice
-                                        ? primaryAccent
-                                        : (isDark
-                                            ? Colors.white10
-                                            : Colors.black12),
-                                    borderRadius: BorderRadius.circular(10),
+                              child: Material(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                child: ListTile(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: Icon(
-                                    Icons.tv_rounded,
-                                    color: isThisDevice
-                                        ? Colors.white
-                                        : textPrimary,
-                                    size: 20,
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: isThisDevice
+                                          ? primaryAccent
+                                          : (isDark
+                                              ? Colors.white10
+                                              : Colors.black12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.tv_rounded,
+                                      color: isThisDevice
+                                          ? Colors.white
+                                          : textPrimary,
+                                      size: 20,
+                                    ),
                                   ),
-                                ),
-                                title: Text(
-                                  device.name,
-                                  style: TextStyle(
-                                    color: textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                                  title: Text(
+                                    device.name,
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                ),
-                                subtitle: Text(
-                                  '${device.host}:${device.port}',
-                                  style: TextStyle(
-                                    color: textSecondary,
-                                    fontSize: 12,
+                                  subtitle: Text(
+                                    '${device.host}:${device.port}',
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                                trailing: isThisDevice
-                                    ? Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: primaryAccent,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: const Text(
-                                          'Connected',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
+                                  trailing: isThisDevice
+                                      ? Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: primaryAccent,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
+                                          child: const Text(
+                                            'Connected',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: textSecondary,
                                         ),
-                                      )
-                                    : Icon(
-                                        Icons.chevron_right_rounded,
-                                        color: textSecondary,
-                                      ),
-                                onTap: isThisDevice
-                                    ? null
-                                    : () => _connectToDevice(device),
+                                  onTap: isThisDevice
+                                      ? null
+                                      : () => _connectToDevice(device),
+                                ),
                               ),
                             );
                           }),
@@ -510,7 +519,7 @@ class _CastSheetState extends State<CastSheet>
     bool isDark,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(18.0),
@@ -522,6 +531,7 @@ class _CastSheetState extends State<CastSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Status row ─────────────────────────────────────────────────
           Row(
             children: [
               Container(
@@ -544,7 +554,10 @@ class _CastSheetState extends State<CastSheet>
               ),
               const Spacer(),
               TextButton(
-                onPressed: () => castService.disconnect(),
+                onPressed: () {
+                  castService.disconnect();
+                  Navigator.of(context).pop(); // close the sheet
+                },
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFFF43F5E),
                   padding:
@@ -565,59 +578,41 @@ class _CastSheetState extends State<CastSheet>
             ),
           ),
           if (castService.currentTitle != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               '${castService.currentTitle} • ${castService.currentArtist ?? "Pocketo"}',
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: textSecondary, fontSize: 13),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // Playback & Volume controls for Cast
-          Row(
-            children: [
-              IconButton(
-                icon: Icon(
-                  castService.isCastPlaying
-                      ? Icons.pause_circle_filled_rounded
-                      : Icons.play_circle_fill_rounded,
-                  color: primaryAccent,
-                  size: 38,
-                ),
-                onPressed: () {
-                  if (castService.isCastPlaying) {
-                    castService.pause();
-                  } else {
-                    castService.play();
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.volume_down_rounded, color: textSecondary, size: 20),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 12),
-                  ),
-                  child: Slider(
-                    value: castService.volume,
-                    activeColor: primaryAccent,
-                    inactiveColor: isDark ? Colors.white24 : Colors.black12,
-                    onChanged: (val) => castService.setVolume(val),
+          // ── Hint ───────────────────────────────────────────────────────
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: primaryAccent.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.touch_app_rounded,
+                    size: 18, color: primaryAccent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Use the player screen to control playback, seek, and volume on the cast device.',
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
-              Icon(Icons.volume_up_rounded, color: textSecondary, size: 20),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -749,6 +744,108 @@ class _CastSheetState extends State<CastSheet>
             ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Seek bar widget for the cast controller
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CastSeekBar extends StatefulWidget {
+  final CastService castService;
+  final Color primaryAccent;
+  final Color textSecondary;
+  final bool isDark;
+
+  const _CastSeekBar({
+    required this.castService,
+    required this.primaryAccent,
+    required this.textSecondary,
+    required this.isDark,
+  });
+
+  @override
+  State<_CastSeekBar> createState() => _CastSeekBarState();
+}
+
+class _CastSeekBarState extends State<_CastSeekBar> {
+  double? _draggingValue; // non-null while user is dragging
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return d.inHours > 0 ? '${d.inHours}:$m:$s' : '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.castService;
+    final pos = cs.position;
+    final dur = cs.duration;
+    final hasDur = dur > Duration.zero;
+
+    // slider value: either drag preview or live position
+    final sliderVal = _draggingValue ??
+        (hasDur
+            ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
+            : 0.0);
+
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 3.5,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            activeTrackColor: widget.primaryAccent,
+            inactiveTrackColor:
+                widget.isDark ? Colors.white24 : Colors.black12,
+            thumbColor: widget.primaryAccent,
+            overlayColor: widget.primaryAccent.withValues(alpha: 0.18),
+          ),
+          child: Slider(
+            value: sliderVal,
+            onChanged: hasDur
+                ? (v) => setState(() => _draggingValue = v)
+                : null,
+            onChangeEnd: hasDur
+                ? (v) {
+                    final seekTo =
+                        Duration(milliseconds: (v * dur.inMilliseconds).round());
+                    cs.seek(seekTo);
+                    setState(() => _draggingValue = null);
+                  }
+                : null,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _fmt(_draggingValue != null && hasDur
+                    ? Duration(
+                        milliseconds:
+                            (_draggingValue! * dur.inMilliseconds).round())
+                    : pos),
+                style: TextStyle(
+                    color: widget.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500),
+              ),
+              Text(
+                hasDur ? _fmt(dur) : '--:--',
+                style: TextStyle(
+                    color: widget.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -349,27 +349,31 @@ class _PlayScreenState extends State<PlayScreen>
                                 color: isCurrent ? activeAccent : borderCol,
                               ),
                             ),
-                            child: ListTile(
-                              leading: ArtworkHelper.buildArtworkWidget(filePath,
-                                  width: 40, height: 40, borderRadius: 8),
-                              title: Text(songName,
-                                  style: TextStyle(
-                                    color: isCurrent ? activeAccent : textCol,
-                                    fontSize: 14.5,
-                                    fontWeight: isCurrent
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1),
-                              trailing: isCurrent && widget.isPlaying
-                                  ? Icon(Icons.graphic_eq_rounded,
-                                      color: activeAccent, size: 20)
-                                  : null,
-                              onTap: () {
-                                widget.playTrack(index);
-                                Navigator.pop(context);
-                              },
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              child: ListTile(
+                                leading: ArtworkHelper.buildArtworkWidget(filePath,
+                                    width: 40, height: 40, borderRadius: 8),
+                                title: Text(songName,
+                                    style: TextStyle(
+                                      color: isCurrent ? activeAccent : textCol,
+                                      fontSize: 14.5,
+                                      fontWeight: isCurrent
+                                          ? FontWeight.bold
+                                          : FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1),
+                                trailing: isCurrent && widget.isPlaying
+                                    ? Icon(Icons.graphic_eq_rounded,
+                                        color: activeAccent, size: 20)
+                                    : null,
+                                onTap: () {
+                                  widget.playTrack(index);
+                                  Navigator.pop(context);
+                                },
+                              ),
                             ),
                           );
                         },
@@ -480,6 +484,7 @@ class _PlayScreenState extends State<PlayScreen>
                               currentTrackPath: currentPath,
                               currentTrackTitle: currentSong,
                               currentTrackArtist: 'Local Audio',
+                              startPosition: widget.audioPlayer.position,
                             );
                           },
                           child: Padding(
@@ -676,139 +681,185 @@ class _PlayScreenState extends State<PlayScreen>
                     ),
                     const SizedBox(height: 12.0),
 
-                    // ── Seek Slider ───────────────────────────────────
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                        overlayShape:
-                            const RoundSliderOverlayShape(overlayRadius: 14.0),
-                        activeTrackColor: activeCol,
-                        inactiveTrackColor:
-                            isDark ? Colors.white24 : const Color(0xFFCBD5E1),
-                        thumbColor: activeCol,
-                        overlayColor: activeCol.withValues(alpha: 0.15),
-                        trackHeight: 3.5,
-                      ),
-                      child: Slider(
-                        value: sliderValue.clamp(
-                          0,
-                          widget.duration.inSeconds.toDouble() > 0
-                              ? widget.duration.inSeconds.toDouble()
-                              : 0.0,
-                        ),
-                        min: 0,
-                        max: widget.duration.inSeconds.toDouble() > 0
-                            ? widget.duration.inSeconds.toDouble()
-                            : 1.0,
-                        onChanged: (value) =>
-                            setState(() => sliderValue = value),
-                        onChangeEnd: seekAudio,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(
-                                Duration(seconds: sliderValue.toInt())),
-                            style: TextStyle(color: subTextCol, fontSize: 12),
-                          ),
-                          Text(
-                            _formatDuration(widget.duration),
-                            style: TextStyle(color: subTextCol, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
+                    // ── Controls: Cast mode vs Local mode ──────────────
+                    ListenableBuilder(
+                      listenable: CastService.instance,
+                      builder: (context, _) {
+                        final cs = CastService.instance;
+                        if (cs.isConnected) {
+                          // ═══════════════════════════════════════════════
+                          //  CAST CONTROLLER  —  shown in PlayScreen when
+                          //  audio is streaming to a remote device
+                          // ═══════════════════════════════════════════════
+                          return _PlayScreenCastController(
+                            castService: cs,
+                            activeCol: activeCol,
+                            subTextCol: subTextCol,
+                            iconCol: iconCol,
+                            isDark: isDark,
+                            onPrevious: widget.onPrevious,
+                            onNext: widget.onNext,
+                          );
+                        }
 
-                    // ── Playback Controls ─────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            widget.audioPlayer.loopMode == LoopMode.all
-                                ? Icons.repeat_rounded
-                                : widget.audioPlayer.loopMode == LoopMode.one
-                                    ? Icons.repeat_one_rounded
-                                    : Icons.shuffle_rounded,
-                            size: 24,
-                            color: widget.audioPlayer.loopMode != LoopMode.off
-                                ? activeCol
-                                : (isDark
-                                    ? Colors.white38
-                                    : Colors.grey.shade400),
-                          ),
-                          tooltip: 'Repeat / Shuffle',
-                          onPressed: () {
-                            if (widget.audioPlayer.loopMode == LoopMode.off) {
-                              widget.audioPlayer.setLoopMode(LoopMode.all);
-                              widget.audioPlayer.setShuffleModeEnabled(true);
-                            } else if (widget.audioPlayer.loopMode ==
-                                LoopMode.all) {
-                              widget.audioPlayer.setLoopMode(LoopMode.one);
-                              widget.audioPlayer.setShuffleModeEnabled(false);
-                            } else {
-                              widget.audioPlayer.setLoopMode(LoopMode.off);
-                            }
-                            setState(() {});
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.skip_previous_rounded,
-                              size: 32, color: iconCol),
-                          tooltip: 'Previous',
-                          onPressed: widget.onPrevious,
-                        ),
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: primaryBtnBg,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryBtnBg.withValues(alpha: 0.4),
-                                blurRadius: 14,
-                                offset: const Offset(0, 4),
+                        // ══════════════════════════════════════════════════
+                        //  LOCAL CONTROLS  —  normal phone playback
+                        // ══════════════════════════════════════════════════
+                        return Column(
+                          children: [
+                            // Seek slider
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 6.0),
+                                overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 14.0),
+                                activeTrackColor: activeCol,
+                                inactiveTrackColor: isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFCBD5E1),
+                                thumbColor: activeCol,
+                                overlayColor:
+                                    activeCol.withValues(alpha: 0.15),
+                                trackHeight: 3.5,
                               ),
-                            ],
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              widget.isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              size: 36,
-                              color: primaryBtnIcon,
+                              child: Slider(
+                                value: sliderValue.clamp(
+                                  0,
+                                  widget.duration.inSeconds.toDouble() > 0
+                                      ? widget.duration.inSeconds.toDouble()
+                                      : 0.0,
+                                ),
+                                min: 0,
+                                max: widget.duration.inSeconds.toDouble() > 0
+                                    ? widget.duration.inSeconds.toDouble()
+                                    : 1.0,
+                                onChanged: (value) =>
+                                    setState(() => sliderValue = value),
+                                onChangeEnd: seekAudio,
+                              ),
                             ),
-                            onPressed: widget.currentlyPlayingIndex != null
-                                ? () => widget.isPlaying
-                                    ? widget.onPause()
-                                    : widget.onPlay()
-                                : null,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.skip_next_rounded,
-                              size: 32, color: iconCol),
-                          tooltip: 'Next',
-                          onPressed: widget.onNext,
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.queue_music_rounded,
-                              size: 24,
-                              color: isDark
-                                  ? Colors.white60
-                                  : Colors.grey.shade600),
-                          tooltip: 'Track Queue',
-                          onPressed: showSongSelectionSheet,
-                        ),
-                      ],
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDuration(Duration(
+                                        seconds: sliderValue.toInt())),
+                                    style: TextStyle(
+                                        color: subTextCol, fontSize: 12),
+                                  ),
+                                  Text(
+                                    _formatDuration(widget.duration),
+                                    style: TextStyle(
+                                        color: subTextCol, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16.0),
+
+                            // Playback buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    widget.audioPlayer.loopMode == LoopMode.all
+                                        ? Icons.repeat_rounded
+                                        : widget.audioPlayer.loopMode ==
+                                                LoopMode.one
+                                            ? Icons.repeat_one_rounded
+                                            : Icons.shuffle_rounded,
+                                    size: 24,
+                                    color: widget.audioPlayer.loopMode !=
+                                            LoopMode.off
+                                        ? activeCol
+                                        : (isDark
+                                            ? Colors.white38
+                                            : Colors.grey.shade400),
+                                  ),
+                                  tooltip: 'Repeat / Shuffle',
+                                  onPressed: () {
+                                    if (widget.audioPlayer.loopMode ==
+                                        LoopMode.off) {
+                                      widget.audioPlayer
+                                          .setLoopMode(LoopMode.all);
+                                      widget.audioPlayer
+                                          .setShuffleModeEnabled(true);
+                                    } else if (widget.audioPlayer.loopMode ==
+                                        LoopMode.all) {
+                                      widget.audioPlayer
+                                          .setLoopMode(LoopMode.one);
+                                      widget.audioPlayer
+                                          .setShuffleModeEnabled(false);
+                                    } else {
+                                      widget.audioPlayer
+                                          .setLoopMode(LoopMode.off);
+                                    }
+                                    setState(() {});
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.skip_previous_rounded,
+                                      size: 32, color: iconCol),
+                                  tooltip: 'Previous',
+                                  onPressed: widget.onPrevious,
+                                ),
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: primaryBtnBg,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: primaryBtnBg.withValues(
+                                            alpha: 0.4),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(
+                                      widget.isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      size: 36,
+                                      color: primaryBtnIcon,
+                                    ),
+                                    onPressed:
+                                        widget.currentlyPlayingIndex != null
+                                            ? () => widget.isPlaying
+                                                ? widget.onPause()
+                                                : widget.onPlay()
+                                            : null,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.skip_next_rounded,
+                                      size: 32, color: iconCol),
+                                  tooltip: 'Next',
+                                  onPressed: widget.onNext,
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.queue_music_rounded,
+                                      size: 24,
+                                      color: isDark
+                                          ? Colors.white60
+                                          : Colors.grey.shade600),
+                                  tooltip: 'Track Queue',
+                                  onPressed: showSongSelectionSheet,
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 18.0),
                     Divider(
@@ -841,6 +892,7 @@ class _PlayScreenState extends State<PlayScreen>
                                     currentTrackPath: currentPath,
                                     currentTrackTitle: currentSong,
                                     currentTrackArtist: 'Local Audio',
+                                    startPosition: widget.audioPlayer.position,
                                   );
                                 },
                               );
@@ -995,5 +1047,264 @@ class _PlayScreenState extends State<PlayScreen>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Cast controller embedded inside PlayScreen
+//  Shown instead of the normal seek+buttons when CastService.isConnected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PlayScreenCastController extends StatefulWidget {
+  final CastService castService;
+  final Color activeCol;
+  final Color subTextCol;
+  final Color iconCol;
+  final bool isDark;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  const _PlayScreenCastController({
+    required this.castService,
+    required this.activeCol,
+    required this.subTextCol,
+    required this.iconCol,
+    required this.isDark,
+    this.onPrevious,
+    this.onNext,
+  });
+
+  @override
+  State<_PlayScreenCastController> createState() =>
+      _PlayScreenCastControllerState();
+}
+
+class _PlayScreenCastControllerState
+    extends State<_PlayScreenCastController> {
+  double? _dragVal;
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return d.inHours > 0 ? '${d.inHours}:$m:$s' : '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.castService;
+    final pos = cs.position;
+    final dur = cs.duration;
+    final hasDur = dur > Duration.zero;
+    final isBuffering = cs.playbackState == CastPlaybackState.buffering;
+
+    final sliderVal = _dragVal ??
+        (hasDur
+            ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
+            : 0.0);
+
+    return Column(
+      children: [
+        // ── "Casting to …" label ───────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.cast_connected_rounded,
+                  size: 14, color: Color(0xFF10B981)),
+              const SizedBox(width: 6),
+              Text(
+                'Casting to ${cs.connectedDeviceName ?? "device"}',
+                style: const TextStyle(
+                  color: Color(0xFF10B981),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (isBuffering) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.8,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // ── Seek bar ───────────────────────────────────────────────────────
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 3.5,
+            thumbShape:
+                const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+            overlayShape:
+                const RoundSliderOverlayShape(overlayRadius: 14.0),
+            activeTrackColor: widget.activeCol,
+            inactiveTrackColor:
+                widget.isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+            thumbColor: widget.activeCol,
+            overlayColor: widget.activeCol.withValues(alpha: 0.15),
+          ),
+          child: Slider(
+            value: sliderVal,
+            onChanged: hasDur
+                ? (v) => setState(() => _dragVal = v)
+                : null,
+            onChangeEnd: hasDur
+                ? (v) {
+                    cs.seek(Duration(
+                        milliseconds: (v * dur.inMilliseconds).round()));
+                    setState(() => _dragVal = null);
+                  }
+                : null,
+          ),
+        ),
+
+        // ── Time labels ────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _fmt(_dragVal != null && hasDur
+                    ? Duration(
+                        milliseconds:
+                            (_dragVal! * dur.inMilliseconds).round())
+                    : pos),
+                style: TextStyle(color: widget.subTextCol, fontSize: 12),
+              ),
+              Text(
+                hasDur ? _fmt(dur) : '--:--',
+                style: TextStyle(color: widget.subTextCol, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Playback buttons ───────────────────────────────────────────────
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Previous track — changes track on phone & re-casts
+            IconButton(
+              tooltip: 'Previous track',
+              icon: Icon(Icons.skip_previous_rounded,
+                  size: 32, color: widget.iconCol),
+              onPressed: widget.onPrevious,
+            ),
+
+            // Rewind 10 s
+            IconButton(
+              tooltip: 'Rewind 10 s',
+              icon: Icon(Icons.replay_10_rounded,
+                  size: 28, color: widget.subTextCol),
+              onPressed: () {
+                final np = cs.position - const Duration(seconds: 10);
+                cs.seek(np < Duration.zero ? Duration.zero : np);
+              },
+            ),
+
+            // Play / Pause (big circle button)
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: widget.activeCol,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.activeCol.withValues(alpha: 0.4),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                iconSize: 34,
+                icon: isBuffering
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Icon(
+                        cs.isCastPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 34,
+                      ),
+                onPressed: () {
+                  cs.isCastPlaying ? cs.pause() : cs.play();
+                },
+              ),
+            ),
+
+            // Forward 10 s
+            IconButton(
+              tooltip: 'Forward 10 s',
+              icon: Icon(Icons.forward_10_rounded,
+                  size: 28, color: widget.subTextCol),
+              onPressed: () {
+                final np = cs.position + const Duration(seconds: 10);
+                cs.seek(dur > Duration.zero && np > dur ? dur : np);
+              },
+            ),
+
+            // Next track
+            IconButton(
+              tooltip: 'Next track',
+              icon: Icon(Icons.skip_next_rounded,
+                  size: 32, color: widget.iconCol),
+              onPressed: widget.onNext,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // ── Volume slider ──────────────────────────────────────────────────
+        Row(
+          children: [
+            const SizedBox(width: 8),
+            Icon(Icons.volume_down_rounded,
+                size: 18, color: widget.subTextCol),
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 2.5,
+                  thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 5),
+                  overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 11),
+                  activeTrackColor: widget.activeCol,
+                  inactiveTrackColor:
+                      widget.isDark ? Colors.white24 : Colors.black12,
+                  thumbColor: widget.activeCol,
+                ),
+                child: Slider(
+                  value: cs.volume,
+                  onChanged: (v) => cs.setVolume(v),
+                ),
+              ),
+            ),
+            Icon(Icons.volume_up_rounded,
+                size: 18, color: widget.subTextCol),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ],
+    );
   }
 }

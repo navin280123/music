@@ -845,38 +845,42 @@ class _LibraryScreenState extends State<LibraryScreen>
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderCol),
       ),
-      child: ListTile(
-        leading: ArtworkHelper.buildArtworkWidget(
-          filePath,
-          width: 44,
-          height: 44,
-          borderRadius: 8,
-        ),
-        title: Text(
-          fileName,
-          style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.w600),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text("Audio Track", style: TextStyle(color: subTextCol, fontSize: 12)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(
-                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: isFav ? const Color(0xFFF43F5E) : subTextCol,
-                size: 22,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: ListTile(
+          leading: ArtworkHelper.buildArtworkWidget(
+            filePath,
+            width: 44,
+            height: 44,
+            borderRadius: 8,
+          ),
+          title: Text(
+            fileName,
+            style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text("Audio Track", style: TextStyle(color: subTextCol, fontSize: 12)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isFav ? const Color(0xFFF43F5E) : subTextCol,
+                  size: 22,
+                ),
+                onPressed: () => PlaylistManager.instance.toggleFavorite(filePath),
               ),
-              onPressed: () => PlaylistManager.instance.toggleFavorite(filePath),
-            ),
-            IconButton(
-              icon: Icon(Icons.edit_note_rounded, color: subTextCol, size: 22),
-              onPressed: () => TagEditorSheet.show(context, filePath),
-            ),
-          ],
+              IconButton(
+                icon: Icon(Icons.edit_note_rounded, color: subTextCol, size: 22),
+                onPressed: () => TagEditorSheet.show(context, filePath),
+              ),
+            ],
+          ),
+          onTap: () => widget.playFilePath(filePath),
         ),
-        onTap: () => widget.playFilePath(filePath),
       ),
     );
   }

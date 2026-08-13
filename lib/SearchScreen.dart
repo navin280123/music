@@ -238,69 +238,73 @@ class _SearchScreenState extends State<SearchScreen> {
                                             ),
                                           ],
                                   ),
-                                  child: ListTile(
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(
-                                            vertical: 4.0, horizontal: 12.0),
-                                    leading: ArtworkHelper.buildArtworkWidget(
-                                      file.path,
-                                      width: 44,
-                                      height: 44,
-                                      borderRadius: 8.0,
-                                    ),
-                                    title: Text(
-                                      title,
-                                      style: TextStyle(
-                                        color: textCol,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14.5,
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(14.0),
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              vertical: 4.0, horizontal: 12.0),
+                                      leading: ArtworkHelper.buildArtworkWidget(
+                                        file.path,
+                                        width: 44,
+                                        height: 44,
+                                        borderRadius: 8.0,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    subtitle: Text(
-                                      "Tap to play track",
-                                      style: TextStyle(
-                                        fontSize: 12.0,
-                                        color: subTextCol,
+                                      title: Text(
+                                        title,
+                                        style: TextStyle(
+                                          color: textCol,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 14.5,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                    onTap: () {
-                                      widget.playTrack(originalIndex);
-                                      Navigator.pop(context);
-                                    },
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            isFav
-                                                ? Icons.favorite_rounded
-                                                : Icons
-                                                    .favorite_border_rounded,
-                                            color: isFav
-                                                ? const Color(0xFFF43F5E)
-                                                : subTextCol,
-                                            size: 22.0,
-                                          ),
-                                          onPressed: () {
-                                            PlaylistManager.instance
-                                                .toggleFavorite(file.path);
-                                          },
+                                      subtitle: Text(
+                                        "Tap to play track",
+                                        style: TextStyle(
+                                          fontSize: 12.0,
+                                          color: subTextCol,
                                         ),
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.play_circle_fill_rounded,
-                                            color: isDark
-                                                ? Colors.white
-                                                : AppTheme.lightPrimary,
-                                            size: 32.0,
+                                      ),
+                                      onTap: () {
+                                        widget.playTrack(originalIndex);
+                                        Navigator.pop(context);
+                                      },
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              isFav
+                                                  ? Icons.favorite_rounded
+                                                  : Icons
+                                                      .favorite_border_rounded,
+                                              color: isFav
+                                                  ? const Color(0xFFF43F5E)
+                                                  : subTextCol,
+                                              size: 22.0,
+                                            ),
+                                            onPressed: () {
+                                              PlaylistManager.instance
+                                                  .toggleFavorite(file.path);
+                                            },
                                           ),
-                                          onPressed: () {
-                                            widget.playTrack(originalIndex);
-                                            Navigator.pop(context);
-                                          },
-                                        ),
-                                      ],
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.play_circle_fill_rounded,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.lightPrimary,
+                                              size: 32.0,
+                                            ),
+                                            onPressed: () {
+                                              widget.playTrack(originalIndex);
+                                              Navigator.pop(context);
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );

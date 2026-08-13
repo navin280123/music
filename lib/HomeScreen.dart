@@ -322,7 +322,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
       ),
-      child: ListTile(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14.0),
+        child: ListTile(
         contentPadding:
             const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
         leading: ArtworkHelper.buildArtworkWidget(
@@ -447,6 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

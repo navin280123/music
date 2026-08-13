@@ -60,8 +60,42 @@ class _MainScreenState extends State<MainScreen> {
     // Register callbacks so CastService can pause/resume local audio
     CastService.instance.setPhonePlayerCallbacks(
       onPause: () => audioPlayer.pause(),
-      onResume: () => audioPlayer.play(),
+      onResume: (lastPos) async {
+        if (_currentlyPlayingIndex != null &&
+            _currentlyPlayingIndex! >= 0 &&
+            _currentlyPlayingIndex! < _currentAudioFiles.length) {
+          try {
+            await audioPlayer.seek(lastPos, index: _currentlyPlayingIndex);
+          } catch (e) {
+            await audioPlayer.setAudioSource(
+              playlist,
+              initialIndex: _currentlyPlayingIndex,
+              initialPosition: lastPos,
+            );
+          }
+          await audioPlayer.play();
+        }
+      },
     );
+
+    CastService.instance.onTrackEnded = () {
+      if (_isRepeat) {
+        if (_currentlyPlayingIndex != null) playSong(_currentlyPlayingIndex!);
+      } else if (AppSettings.instance.autoPlayNext) {
+        _nextTrack();
+      }
+    };
+    CastService.instance.addListener(_handleCastStateChanged);
+  }
+
+  void _handleCastStateChanged() {
+    if (CastService.instance.isConnected && mounted) {
+      setState(() {
+        _isPlaying = CastService.instance.isCastPlaying;
+        _position = CastService.instance.position;
+        _duration = CastService.instance.duration;
+      });
+    }
   }
 
   void _handleSettingsChanged() {
@@ -115,7 +149,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _setupAudioPlayer() {
     audioPlayer.durationStream.listen((duration) {
-      if (mounted) {
+      if (mounted && !CastService.instance.isConnected) {
         setState(() {
           _duration = duration ?? Duration.zero;
         });
@@ -123,7 +157,7 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     audioPlayer.positionStream.listen((position) {
-      if (mounted) {
+      if (mounted && !CastService.instance.isConnected) {
         setState(() {
           _position = position;
         });
@@ -131,13 +165,14 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     audioPlayer.playerStateStream.listen((playerState) {
-      if (mounted) {
+      if (mounted && !CastService.instance.isConnected) {
         setState(() {
           _isPlaying = playerState.playing;
         });
       }
 
-      if (playerState.processingState == ProcessingState.completed) {
+      if (playerState.processingState == ProcessingState.completed &&
+          !CastService.instance.isConnected) {
         debugPrint("Song completed");
         SleepTimerService.instance.onSongCompleted(audioPlayer);
 
@@ -175,6 +210,9 @@ class _MainScreenState extends State<MainScreen> {
     if (index < 0 || index >= _currentAudioFiles.length) return;
 
     try {
+      final filePath = _currentAudioFiles[index];
+      final metadata = _fetchMetadataFromPath(filePath);
+
       if (mounted) {
         setState(() {
           _currentlyPlayingIndex = index;
@@ -183,13 +221,27 @@ class _MainScreenState extends State<MainScreen> {
         });
       }
 
-      await audioPlayer.setAudioSource(
-        playlist,
-        initialIndex: index,
-        initialPosition: Duration.zero,
-      );
+      PlaylistManager.instance.recordSongPlay(filePath);
+      _refreshMiniPalette(filePath);
 
-      await audioPlayer.play();
+      if (CastService.instance.isConnected) {
+        await audioPlayer.pause();
+        await CastService.instance.castTrack(
+          filePath,
+          title: metadata['title'],
+          artist: metadata['artist'],
+          duration: _duration > Duration.zero ? _duration : null,
+          startPosition: Duration.zero,
+        );
+      } else {
+        await audioPlayer.setAudioSource(
+          playlist,
+          initialIndex: index,
+          initialPosition: Duration.zero,
+        );
+
+        await audioPlayer.play();
+      }
     } catch (e) {
       debugPrint("Error playing song: $e");
     }
@@ -224,6 +276,15 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> play() async {
+    if (CastService.instance.isConnected) {
+      CastService.instance.play();
+      if (mounted) {
+        setState(() {
+          _isPlaying = true;
+        });
+      }
+      return;
+    }
     if (_currentlyPlayingIndex != null) {
       if (mounted) {
         setState(() {
@@ -237,6 +298,15 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> pause() async {
+    if (CastService.instance.isConnected) {
+      CastService.instance.pause();
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+        });
+      }
+      return;
+    }
     if (mounted) {
       setState(() {
         _isPlaying = false;
@@ -320,6 +390,7 @@ class _MainScreenState extends State<MainScreen> {
       currentTrackPath: trackPath,
       currentTrackTitle: trackTitle,
       currentTrackArtist: trackArtist,
+      startPosition: audioPlayer.position,
     );
   }
 
@@ -790,6 +861,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    CastService.instance.removeListener(_handleCastStateChanged);
     AppSettings.instance.removeListener(_handleSettingsChanged);
     MediaCacheService.instance.removeListener(_handleCacheChanged);
     audioPlayer.dispose();

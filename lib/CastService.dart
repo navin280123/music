@@ -56,7 +56,7 @@ class CastService extends ChangeNotifier {
   CastPlaybackState _playbackState = CastPlaybackState.idle;
   double _volume = 1.0;
   Duration _position = Duration.zero;
-  final Duration _duration = Duration.zero;
+  Duration _duration = Duration.zero; // updated from MEDIA_STATUS
 
   // ── Google Cast socket state ─────────────────────────────────────────────
   SecureSocket? _castSocket;
@@ -66,13 +66,21 @@ class CastService extends ChangeNotifier {
   int _requestId = 1;
   String? _castTransportId;
   String? _castSessionId;
+  int? _mediaSessionId; // real session ID received from MEDIA_STATUS
 
   // ── DLNA ─────────────────────────────────────────────────────────────────
   String? _dlnaControlUrl;
 
-  // ── Phone audio callbacks ─────────────────────────────────────────────────
+  // ── Phone audio callbacks & event handlers ──────────────────────────────────
   Future<void> Function()? _onPausePhone;
-  Future<void> Function()? _onResumePhone;
+  Future<void> Function(Duration lastPosition)? _onResumePhone;
+  VoidCallback? _onTrackEnded;
+  Timer? _positionTimer;
+  int _pollCounter = 0;
+
+  set onTrackEnded(VoidCallback? callback) {
+    _onTrackEnded = callback;
+  }
 
   // ── Getters ──────────────────────────────────────────────────────────────
   bool get isConnected => _connectedDevice != null;
@@ -91,16 +99,32 @@ class CastService extends ChangeNotifier {
   String? get currentTitle => _currentTitle;
   String? get currentArtist => _currentArtist;
 
+  /// HTTP stream URL with the correct file extension for the current track.
   String? get streamUrl {
     if (_localIp == null || _server == null) return null;
-    return 'http://$_localIp:$_serverPort/stream.mp3';
+    final ext = _currentCastingPath?.split('.').last.toLowerCase() ?? 'mp3';
+    return 'http://$_localIp:$_serverPort/stream.$ext';
+  }
+
+  /// MIME content type derived from the current casting file's extension.
+  String get _streamContentType {
+    final ext = _currentCastingPath?.split('.').last.toLowerCase() ?? 'mp3';
+    switch (ext) {
+      case 'm4a':
+      case 'aac': return 'audio/aac';
+      case 'wav': return 'audio/wav';
+      case 'flac': return 'audio/flac';
+      case 'ogg':
+      case 'opus': return 'audio/ogg';
+      default: return 'audio/mpeg';
+    }
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
   void setPhonePlayerCallbacks({
     Future<void> Function()? onPause,
-    Future<void> Function()? onResume,
+    Future<void> Function(Duration lastPosition)? onResume,
   }) {
     _onPausePhone = onPause;
     _onResumePhone = onResume;
@@ -332,10 +356,21 @@ class CastService extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> castTrack(String filePath, {String? title, String? artist}) async {
+  Future<bool> castTrack(
+    String filePath, {
+    String? title,
+    String? artist,
+    Duration? duration,
+    Duration startPosition = Duration.zero,
+  }) async {
     if (_onPausePhone != null) {
       await _onPausePhone!();
       debugPrint('CastService: paused phone audio');
+    }
+
+    _position = startPosition;
+    if (duration != null && duration > Duration.zero) {
+      _duration = duration;
     }
 
     final serverOk = await startStreamServer(filePath, title: title, artist: artist);
@@ -346,12 +381,17 @@ class CastService extends ChangeNotifier {
     final trackArtist = artist ?? 'Local Audio';
 
     if (_connectedDevice?.type == 'chromecast') {
-      await _chromeCastLoad(url, trackTitle, trackArtist);
+      await _chromeCastLoad(url, trackTitle, trackArtist, startSeconds: startPosition.inSeconds.toDouble());
     } else if (_connectedDevice?.type == 'smart_tv' || _connectedDevice?.type == 'dlna') {
       await _dlnaSendPlay(url, trackTitle, trackArtist);
+      if (startPosition > Duration.zero) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        _dlnaSeek(startPosition);
+      }
     }
 
     _playbackState = CastPlaybackState.playing;
+    _startPositionTimer();
     notifyListeners();
     return true;
   }
@@ -363,6 +403,7 @@ class CastService extends ChangeNotifier {
       _dlnaControl('Play');
     }
     _playbackState = CastPlaybackState.playing;
+    _startPositionTimer();
     notifyListeners();
   }
 
@@ -373,6 +414,7 @@ class CastService extends ChangeNotifier {
       _dlnaControl('Pause');
     }
     _playbackState = CastPlaybackState.paused;
+    _stopPositionTimer();
     notifyListeners();
   }
 
@@ -388,16 +430,96 @@ class CastService extends ChangeNotifier {
 
   void setVolume(double vol) {
     _volume = vol.clamp(0.0, 1.0);
+    // Send to Chromecast receiver
+    if (_connectedDevice?.type == 'chromecast' && _castSocket != null) {
+      _chromeCastSend('sender-0', 'receiver-0', _ccReceiverNs, {
+        'type': 'SET_VOLUME',
+        'requestId': _requestId++,
+        'volume': {'level': _volume, 'muted': false},
+      });
+    }
     notifyListeners();
   }
 
+  void _startPositionTimer() {
+    _positionTimer?.cancel();
+    _pollCounter = 0;
+    _positionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_playbackState == CastPlaybackState.playing) {
+        _position += const Duration(seconds: 1);
+        if (_duration > Duration.zero && _position >= _duration) {
+          _position = _duration;
+          _stopPositionTimer();
+          _playbackState = CastPlaybackState.idle;
+          notifyListeners();
+          _onTrackEnded?.call();
+          return;
+        }
+        notifyListeners();
+
+        _pollCounter++;
+        if (_pollCounter >= 5) {
+          _pollCounter = 0;
+          _pollCastStatus();
+        }
+      } else {
+        _stopPositionTimer();
+      }
+    });
+  }
+
+  void _stopPositionTimer() {
+    _positionTimer?.cancel();
+    _positionTimer = null;
+  }
+
+  void _pollCastStatus() {
+    if (_connectedDevice?.type == 'chromecast' &&
+        _castSocket != null &&
+        _castTransportId != null) {
+      _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
+        'type': 'GET_STATUS',
+        'requestId': _requestId++,
+        'mediaSessionId': _mediaSessionId ?? 1,
+      });
+    }
+  }
+
   Future<void> disconnect() async {
+    _stopPositionTimer();
     _heartbeatTimer?.cancel();
     _heartbeatTimer = null;
 
     if (_connectedDevice?.type == 'chromecast' && _castSocket != null) {
-      _chromeCastSend('sender-0', 'receiver-0', _ccConnectNs, {'type': 'CLOSE'});
-      await Future.delayed(const Duration(milliseconds: 200));
+      try {
+        // Send STOP command to media session
+        if (_castTransportId != null) {
+          _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
+            'type': 'STOP',
+            'requestId': _requestId++,
+            'mediaSessionId': _mediaSessionId ?? 1,
+          });
+        }
+
+        // Send STOP command to receiver app to stop Default Media Receiver
+        if (_castSessionId != null) {
+          _chromeCastSend('sender-0', 'receiver-0', _ccReceiverNs, {
+            'type': 'STOP',
+            'requestId': _requestId++,
+            'sessionId': _castSessionId,
+          });
+        }
+
+        // Close connection channels
+        if (_castTransportId != null) {
+          _chromeCastSend('sender-0', _castTransportId!, _ccConnectNs, {'type': 'CLOSE'});
+        }
+        _chromeCastSend('sender-0', 'receiver-0', _ccConnectNs, {'type': 'CLOSE'});
+
+        await Future.delayed(const Duration(milliseconds: 250));
+      } catch (e) {
+        debugPrint('Error sending stop during disconnect: $e');
+      }
     } else if (_dlnaControlUrl != null) {
       await _dlnaControl('Stop');
     }
@@ -409,18 +531,21 @@ class CastService extends ChangeNotifier {
     } catch (_) {}
     _castSocket = null;
 
+    final lastPos = _position;
+
     _connectedDevice = null;
     _dlnaControlUrl = null;
     _castTransportId = null;
     _castSessionId = null;
+    _mediaSessionId = null;
     _playbackState = CastPlaybackState.idle;
     _receiveBuffer.clear();
 
     await stopStreamServer();
 
     if (_onResumePhone != null) {
-      await _onResumePhone!();
-      debugPrint('CastService: resumed phone audio after disconnect');
+      await _onResumePhone!(lastPos);
+      debugPrint('CastService: resumed phone audio at $lastPos after disconnect');
     }
 
     notifyListeners();
@@ -445,12 +570,13 @@ class CastService extends ChangeNotifier {
       _requestId = 1;
       _castTransportId = null;
       _castSessionId = null;
+      _mediaSessionId = null;
 
       _castSocket = await SecureSocket.connect(
         device.host,
         8009,
         onBadCertificate: (_) => true,
-        timeout: const Duration(seconds: 6),
+        timeout: const Duration(seconds: 8),
       );
 
       _castSocketSub = _castSocket!.listen(
@@ -465,10 +591,20 @@ class CastService extends ChangeNotifier {
         _chromeCastSend('sender-0', 'receiver-0', _ccHeartbeatNs, {'type': 'PING'});
       });
 
+      // CONNECT to the receiver — no extra fields beyond type+origin for
+      // maximum compatibility with Google Home / Nest devices.
       _chromeCastSend('sender-0', 'receiver-0', _ccConnectNs, {
         'type': 'CONNECT',
         'origin': {},
-        'userAgent': 'PocketoPlay/1.0',
+      });
+
+      // Give the device 400 ms to ACK the CONNECT before we send LAUNCH.
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      // Ask for current receiver status (warms up the channel).
+      _chromeCastSend('sender-0', 'receiver-0', _ccReceiverNs, {
+        'type': 'GET_STATUS',
+        'requestId': _requestId++,
       });
 
       debugPrint('Cast: socket open to ${device.host}:8009');
@@ -501,12 +637,20 @@ class CastService extends ChangeNotifier {
         final json = jsonDecode(payload) as Map<String, dynamic>;
         final type = json['type'] as String?;
 
+        debugPrint('Cast RX: type=$type');
+
         if (type == 'PING') {
           _chromeCastSend('sender-0', 'receiver-0', _ccHeartbeatNs, {'type': 'PONG'});
         } else if (type == 'RECEIVER_STATUS') {
           _handleReceiverStatus(json);
         } else if (type == 'MEDIA_STATUS') {
           _handleMediaStatus(json);
+        } else if (type == 'LAUNCH_ERROR') {
+          debugPrint('Cast LAUNCH_ERROR: ${json["reason"]} — ${json["description"]}');
+        } else if (type == 'LOAD_FAILED') {
+          debugPrint('Cast LOAD_FAILED: detailedErrorCode=${json["detailedErrorCode"]}');
+        } else if (type == 'INVALID_REQUEST') {
+          debugPrint('Cast INVALID_REQUEST: reason=${json["reason"]}');
         }
       } catch (e) {
         debugPrint('Cast parse error: $e');
@@ -517,21 +661,26 @@ class CastService extends ChangeNotifier {
   void _handleReceiverStatus(Map<String, dynamic> json) {
     final status = json['status'] as Map<String, dynamic>?;
     final apps = status?['applications'] as List<dynamic>?;
+
     if (apps != null && apps.isNotEmpty) {
       final app = apps.first as Map<String, dynamic>;
       final newTransport = app['transportId'] as String?;
-      final newSession = app['sessionId'] as String?;
+      final newSession   = app['sessionId']   as String?;
 
       if (newTransport != null && newTransport != _castTransportId) {
         _castTransportId = newTransport;
-        _castSessionId = newSession;
-        debugPrint('Cast: app running, transportId=$_castTransportId');
+        _castSessionId   = newSession;
+        debugPrint('Cast: app running — transportId=$_castTransportId');
 
+        // Connect to the media-session transport channel.
         _chromeCastSend('sender-0', _castTransportId!, _ccConnectNs, {
           'type': 'CONNECT',
           'origin': {},
         });
       }
+    } else {
+      // No apps running — receiver is idle.
+      debugPrint('Cast: receiver is idle (no running app)');
     }
   }
 
@@ -539,27 +688,56 @@ class CastService extends ChangeNotifier {
     final statuses = json['status'] as List<dynamic>?;
     if (statuses != null && statuses.isNotEmpty) {
       final s = statuses.first as Map<String, dynamic>;
+
+      // Track the real media session ID for subsequent PLAY/PAUSE/SEEK/STOP.
+      final msid = s['mediaSessionId'];
+      if (msid != null) _mediaSessionId = (msid as num).toInt();
+
+      // Parse duration from media info
+      final mediaInfo = s['media'] as Map<String, dynamic>?;
+      final dur = mediaInfo?['duration'];
+      if (dur != null) {
+        _duration = Duration(milliseconds: ((dur as num) * 1000).round());
+      }
+
       final playerState = s['playerState'] as String?;
       if (playerState == 'PLAYING') {
         _playbackState = CastPlaybackState.playing;
+        if (_positionTimer == null || !_positionTimer!.isActive) {
+          _startPositionTimer();
+        }
       } else if (playerState == 'PAUSED') {
         _playbackState = CastPlaybackState.paused;
+        _stopPositionTimer();
       } else if (playerState == 'BUFFERING') {
         _playbackState = CastPlaybackState.buffering;
+      } else if (playerState == 'IDLE') {
+        _stopPositionTimer();
+        final idleReason = s['idleReason'] as String?;
+        debugPrint('Cast IDLE reason: $idleReason');
+        if (idleReason == 'FINISHED') {
+          _playbackState = CastPlaybackState.idle;
+          _onTrackEnded?.call();
+        } else if (idleReason == 'ERROR') {
+          _playbackState = CastPlaybackState.idle;
+        }
       }
+
       final currentTime = s['currentTime'];
       if (currentTime != null) {
-        _position = Duration(milliseconds: ((currentTime as num) * 1000).round());
+        _position =
+            Duration(milliseconds: ((currentTime as num) * 1000).round());
       }
       notifyListeners();
     }
   }
 
-  Future<void> _chromeCastLoad(String url, String title, String artist) async {
+  Future<void> _chromeCastLoad(String url, String title, String artist, {double startSeconds = 0.0}) async {
     if (_castSocket == null) {
       if (_connectedDevice != null) {
         await _openCastSocket(_connectedDevice!);
-        await Future.delayed(const Duration(seconds: 1));
+        // Wait for CONNECT + GET_STATUS round-trip.
+        await Future.delayed(const Duration(seconds: 2));
       }
       if (_castSocket == null) {
         debugPrint('Cast: no socket, cannot LOAD');
@@ -567,23 +745,35 @@ class CastService extends ChangeNotifier {
       }
     }
 
-    // Launch the Default Media Receiver (appId CC1AD845)
+    // Launch the Default Media Receiver (appId CC1AD845).
+    // Google Home Mini / Nest speakers all support this receiver.
+    final launchReqId = _requestId++;
     _chromeCastSend('sender-0', 'receiver-0', _ccReceiverNs, {
       'type': 'LAUNCH',
       'appId': 'CC1AD845',
-      'requestId': _requestId++,
+      'requestId': launchReqId,
     });
 
-    debugPrint('Cast: waiting for Default Media Receiver to launch...');
-    for (int i = 0; i < 50; i++) {
+    debugPrint('Cast: LAUNCH sent (reqId=$launchReqId), waiting for transportId...');
+
+    // Wait up to 15 seconds for the receiver app to start.
+    // Google Home Mini can be slower than Chromecast dongle.
+    for (int i = 0; i < 75; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
       if (_castTransportId != null) break;
     }
 
     if (_castTransportId == null) {
-      debugPrint('Cast: timeout waiting for media receiver');
+      debugPrint('Cast: timeout — Default Media Receiver did not launch');
       return;
     }
+
+    // Give the transport CONNECT time to be processed on the device side.
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    // Determine the correct MIME type from the actual file extension
+    // so Google Home Mini's strict media pipeline accepts it.
+    final contentType = _streamContentType;
 
     _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
       'type': 'LOAD',
@@ -591,10 +781,13 @@ class CastService extends ChangeNotifier {
       'sessionId': _castSessionId,
       'media': {
         'contentId': url,
-        'contentType': 'audio/mpeg',
+        // Use the URL as contentUrl as well (some Cast v3 receivers need this)
+        'contentUrl': url,
+        'contentType': contentType,
+        // LIVE = HTTP streaming; BUFFERED = local file with known length.
         'streamType': 'BUFFERED',
         'metadata': {
-          'metadataType': 3,
+          'metadataType': 3, // MusicTrackMediaMetadata
           'title': title,
           'artist': artist,
           'albumName': '',
@@ -602,11 +795,18 @@ class CastService extends ChangeNotifier {
         },
       },
       'autoplay': true,
-      'currentTime': 0,
+      'currentTime': startSeconds,
+      'playbackRate': 1,
       'customData': {},
+      'activeTrackIds': [],
     });
 
-    debugPrint('Cast: LOAD sent to $_castTransportId -> $url');
+    debugPrint('Cast: LOAD sent → $url  [type=$contentType, startSeconds=$startSeconds]');
+
+    if (startSeconds > 0) {
+      await Future.delayed(const Duration(milliseconds: 600));
+      _chromeCastSeek(startSeconds);
+    }
   }
 
   void _chromeCastControl(String type) {
@@ -614,7 +814,8 @@ class CastService extends ChangeNotifier {
     _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
       'type': type,
       'requestId': _requestId++,
-      'mediaSessionId': 1,
+      // Use the real mediaSessionId if we have it; fall back to 1.
+      'mediaSessionId': _mediaSessionId ?? 1,
     });
   }
 
@@ -623,7 +824,7 @@ class CastService extends ChangeNotifier {
     _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
       'type': 'SEEK',
       'requestId': _requestId++,
-      'mediaSessionId': 1,
+      'mediaSessionId': _mediaSessionId ?? 1,
       'currentTime': seconds,
       'resumeState': 'PLAYBACK_START',
     });
