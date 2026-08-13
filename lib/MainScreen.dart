@@ -56,6 +56,12 @@ class _MainScreenState extends State<MainScreen> {
 
     AppSettings.instance.addListener(_handleSettingsChanged);
     MediaCacheService.instance.addListener(_handleCacheChanged);
+
+    // Register callbacks so CastService can pause/resume local audio
+    CastService.instance.setPhonePlayerCallbacks(
+      onPause: () => audioPlayer.pause(),
+      onResume: () => audioPlayer.play(),
+    );
   }
 
   void _handleSettingsChanged() {

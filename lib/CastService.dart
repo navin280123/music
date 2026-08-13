@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:multicast_dns/multicast_dns.dart';
+import 'package:http/http.dart' as http;
 
 enum CastPlaybackState { idle, playing, paused, buffering }
 
@@ -11,7 +13,7 @@ class CastDevice {
   final String host;
   final int port;
   final String? model;
-  final String type; // 'chromecast', 'dlna', 'smart_tv', 'web'
+  final String type;
 
   const CastDevice({
     required this.name,
@@ -39,7 +41,7 @@ class CastService extends ChangeNotifier {
 
   CastService._internal();
 
-  // Local HTTP Streaming Server
+  // ── Local HTTP Streaming Server ──────────────────────────────────────────
   HttpServer? _server;
   int _serverPort = 8989;
   String? _localIp;
@@ -47,7 +49,7 @@ class CastService extends ChangeNotifier {
   String? _currentTitle;
   String? _currentArtist;
 
-  // Active Cast State
+  // ── Active Cast State ────────────────────────────────────────────────────
   CastDevice? _connectedDevice;
   bool _isDiscovering = false;
   final List<CastDevice> _discoveredDevices = [];
@@ -56,13 +58,28 @@ class CastService extends ChangeNotifier {
   Duration _position = Duration.zero;
   final Duration _duration = Duration.zero;
 
-  // Getters
+  // ── Google Cast socket state ─────────────────────────────────────────────
+  SecureSocket? _castSocket;
+  StreamSubscription? _castSocketSub;
+  Timer? _heartbeatTimer;
+  final List<int> _receiveBuffer = [];
+  int _requestId = 1;
+  String? _castTransportId;
+  String? _castSessionId;
+
+  // ── DLNA ─────────────────────────────────────────────────────────────────
+  String? _dlnaControlUrl;
+
+  // ── Phone audio callbacks ─────────────────────────────────────────────────
+  Future<void> Function()? _onPausePhone;
+  Future<void> Function()? _onResumePhone;
+
+  // ── Getters ──────────────────────────────────────────────────────────────
   bool get isConnected => _connectedDevice != null;
   bool get isCasting => isConnected && _playbackState != CastPlaybackState.idle;
   CastDevice? get connectedDevice => _connectedDevice;
   String? get connectedDeviceName => _connectedDevice?.name;
-  List<CastDevice> get discoveredDevices =>
-      List.unmodifiable(_discoveredDevices);
+  List<CastDevice> get discoveredDevices => List.unmodifiable(_discoveredDevices);
   bool get isDiscovering => _isDiscovering;
   CastPlaybackState get playbackState => _playbackState;
   bool get isCastPlaying => _playbackState == CastPlaybackState.playing;
@@ -74,13 +91,21 @@ class CastService extends ChangeNotifier {
   String? get currentTitle => _currentTitle;
   String? get currentArtist => _currentArtist;
 
-  /// Returns the HTTP stream URL for remote devices to play
   String? get streamUrl {
     if (_localIp == null || _server == null) return null;
     return 'http://$_localIp:$_serverPort/stream.mp3';
   }
 
-  /// Initialize local networking and resolve local Wi-Fi IP
+  // ── Public API ────────────────────────────────────────────────────────────
+
+  void setPhonePlayerCallbacks({
+    Future<void> Function()? onPause,
+    Future<void> Function()? onResume,
+  }) {
+    _onPausePhone = onPause;
+    _onResumePhone = onResume;
+  }
+
   Future<void> init() async {
     await _resolveLocalIp();
   }
@@ -105,13 +130,10 @@ class CastService extends ChangeNotifier {
     }
   }
 
-  /// Start the local HTTP audio streaming server
-  Future<bool> startStreamServer(String filePath,
-      {String? title, String? artist}) async {
+  Future<bool> startStreamServer(String filePath, {String? title, String? artist}) async {
     _currentCastingPath = filePath;
     _currentTitle = title ?? filePath.split(Platform.pathSeparator).last;
     _currentArtist = artist ?? 'Local Audio';
-
     await _resolveLocalIp();
 
     if (_server != null) {
@@ -120,18 +142,10 @@ class CastService extends ChangeNotifier {
     }
 
     try {
-      _server = await HttpServer.bind(
-        InternetAddress.anyIPv4,
-        _serverPort,
-        shared: true,
-      );
+      _server = await HttpServer.bind(InternetAddress.anyIPv4, _serverPort, shared: true);
     } catch (e) {
       try {
-        _server = await HttpServer.bind(
-          InternetAddress.anyIPv4,
-          0,
-          shared: true,
-        );
+        _server = await HttpServer.bind(InternetAddress.anyIPv4, 0, shared: true);
         _serverPort = _server!.port;
       } catch (err) {
         debugPrint('Failed to start stream server: $err');
@@ -140,16 +154,14 @@ class CastService extends ChangeNotifier {
     }
 
     _server!.listen(_handleHttpRequest);
-    debugPrint('Audio stream server running at $streamUrl');
+    debugPrint('Stream server running at $streamUrl');
     notifyListeners();
     return true;
   }
 
-  /// HTTP request handler supporting partial byte range requests (HTTP 206)
   void _handleHttpRequest(HttpRequest request) async {
     request.response.headers.add('Access-Control-Allow-Origin', '*');
-    request.response.headers
-        .add('Access-Control-Allow-Headers', 'Range, Content-Type');
+    request.response.headers.add('Access-Control-Allow-Headers', 'Range, Content-Type');
     request.response.headers.add('Accept-Ranges', 'bytes');
 
     if (request.method == 'OPTIONS') {
@@ -188,33 +200,24 @@ class CastService extends ChangeNotifier {
       int end = (range.length > 1 && range[1].isNotEmpty)
           ? (int.tryParse(range[1]) ?? totalLength - 1)
           : totalLength - 1;
-
       if (start >= totalLength) {
         request.response.statusCode = HttpStatus.requestedRangeNotSatisfiable;
         await request.response.close();
         return;
       }
-
-      if (end >= totalLength) {
-        end = totalLength - 1;
-      }
-
-      final contentLength = end - start + 1;
+      if (end >= totalLength) end = totalLength - 1;
       request.response.statusCode = HttpStatus.partialContent;
       request.response.headers
           .set(HttpHeaders.contentRangeHeader, 'bytes $start-$end/$totalLength');
-      request.response.headers.contentLength = contentLength;
-
+      request.response.headers.contentLength = end - start + 1;
       try {
-        final stream = file.openRead(start, end + 1);
-        await request.response.addStream(stream);
+        await request.response.addStream(file.openRead(start, end + 1));
       } catch (e) {
         debugPrint('Stream interrupted: $e');
       } finally {
         await request.response.close();
       }
     } else {
-      // Full content
       request.response.statusCode = HttpStatus.ok;
       request.response.headers.contentLength = totalLength;
       try {
@@ -227,7 +230,6 @@ class CastService extends ChangeNotifier {
     }
   }
 
-  /// Stop the local stream server
   Future<void> stopStreamServer() async {
     if (_server != null) {
       await _server!.close(force: true);
@@ -237,7 +239,6 @@ class CastService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Scan for local Cast (Chromecast / Google Nest / Android TV / Smart TV) devices
   Future<void> startDiscovery({Duration timeout = const Duration(seconds: 4)}) async {
     if (_isDiscovering) return;
     _isDiscovering = true;
@@ -246,94 +247,63 @@ class CastService extends ChangeNotifier {
 
     final Set<CastDevice> found = {};
 
-    // 1. Google Cast mDNS search
     try {
       final MDnsClient client = MDnsClient();
       await client.start();
-
       const String name = '_googlecast._tcp.local';
-      await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
-        ResourceRecordQuery.serverPointer(name),
-      ).timeout(timeout, onTimeout: (sink) => sink.close())) {
+      await for (final PtrResourceRecord ptr in client
+          .lookup<PtrResourceRecord>(ResourceRecordQuery.serverPointer(name))
+          .timeout(timeout, onTimeout: (sink) => sink.close())) {
         await for (final SrvResourceRecord srv
-            in client.lookup<SrvResourceRecord>(
-          ResourceRecordQuery.service(ptr.domainName),
-        )) {
-          await for (final IPAddressResourceRecord ip
-              in client.lookup<IPAddressResourceRecord>(
-            ResourceRecordQuery.addressIPv4(srv.target),
-          )) {
+            in client.lookup<SrvResourceRecord>(ResourceRecordQuery.service(ptr.domainName))) {
+          await for (final IPAddressResourceRecord ip in client
+              .lookup<IPAddressResourceRecord>(ResourceRecordQuery.addressIPv4(srv.target))) {
             String deviceName = srv.target.replaceAll('.local', '');
-            await for (final TxtResourceRecord txt
-                in client.lookup<TxtResourceRecord>(
-              ResourceRecordQuery.text(ptr.domainName),
-            )) {
-              final entries = txt.text.split('\n');
-              for (final entry in entries) {
+            await for (final TxtResourceRecord txt in client
+                .lookup<TxtResourceRecord>(ResourceRecordQuery.text(ptr.domainName))) {
+              for (final entry in txt.text.split('\n')) {
                 if (entry.startsWith('fn=')) {
                   deviceName = entry.substring(3);
                   break;
                 }
               }
             }
-
-            found.add(
-              CastDevice(
-                name: deviceName,
-                host: ip.address.address,
-                port: srv.port,
-                type: 'chromecast',
-              ),
-            );
+            found.add(CastDevice(name: deviceName, host: ip.address.address, port: srv.port, type: 'chromecast'));
           }
         }
       }
       client.stop();
     } catch (e) {
-      debugPrint('mDNS cast search error: $e');
+      debugPrint('mDNS error: $e');
     }
 
-    // 2. SSDP / UPnP Smart TV search
     try {
       final socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       socket.broadcastEnabled = true;
-
-      const ssdpMsg = 'M-SEARCH * HTTP/1.1\r\n'
-          'HOST: 239.255.255.250:1900\r\n'
-          'MAN: "ssdp:discover"\r\n'
-          'MX: 2\r\n'
+      const ssdpMsg = 'M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\n'
+          'MAN: "ssdp:discover"\r\nMX: 2\r\n'
           'ST: urn:schemas-upnp-org:device:MediaRenderer:1\r\n\r\n';
-
-      socket.send(
-        utf8.encode(ssdpMsg),
-        InternetAddress('239.255.255.250'),
-        1900,
-      );
-
+      socket.send(utf8.encode(ssdpMsg), InternetAddress('239.255.255.250'), 1900);
       socket.listen((event) {
         if (event == RawSocketEvent.read) {
-          final datagram = socket.receive();
-          if (datagram != null) {
-            final text = utf8.decode(datagram.data, allowMalformed: true);
+          final dg = socket.receive();
+          if (dg != null) {
+            final text = utf8.decode(dg.data, allowMalformed: true);
             if (text.contains('200 OK') || text.contains('NOTIFY')) {
-              final host = datagram.address.address;
-              found.add(
-                CastDevice(
-                  name: 'Smart Device ($host)',
-                  host: host,
-                  port: datagram.port,
-                  type: 'smart_tv',
-                ),
-              );
+              found.add(CastDevice(
+                name: 'Smart Device (${dg.address.address})',
+                host: dg.address.address,
+                port: dg.port,
+                type: 'smart_tv',
+              ));
             }
           }
         }
       });
-
       await Future.delayed(const Duration(milliseconds: 1500));
       socket.close();
     } catch (e) {
-      debugPrint('SSDP search error: $e');
+      debugPrint('SSDP error: $e');
     }
 
     _discoveredDevices.clear();
@@ -342,58 +312,508 @@ class CastService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Connect to a Cast device
   Future<bool> connectToDevice(CastDevice device) async {
     _connectedDevice = device;
+    _dlnaControlUrl = null;
+    _castTransportId = null;
+    _castSessionId = null;
+
+    if (device.type == 'smart_tv' || device.type == 'dlna') {
+      _dlnaControlUrl = await _resolveDlnaControlUrl(device);
+      debugPrint('DLNA control URL: $_dlnaControlUrl');
+    }
+
+    if (device.type == 'chromecast') {
+      await _openCastSocket(device);
+    }
+
     _playbackState = CastPlaybackState.playing;
     notifyListeners();
     return true;
   }
 
-  /// Cast an audio track to the connected device
-  Future<bool> castTrack(
-    String filePath, {
-    String? title,
-    String? artist,
-  }) async {
-    final serverOk =
-        await startStreamServer(filePath, title: title, artist: artist);
+  Future<bool> castTrack(String filePath, {String? title, String? artist}) async {
+    if (_onPausePhone != null) {
+      await _onPausePhone!();
+      debugPrint('CastService: paused phone audio');
+    }
+
+    final serverOk = await startStreamServer(filePath, title: title, artist: artist);
     if (!serverOk || streamUrl == null) return false;
 
+    final url = streamUrl!;
+    final trackTitle = title ?? filePath.split(Platform.pathSeparator).last;
+    final trackArtist = artist ?? 'Local Audio';
+
+    if (_connectedDevice?.type == 'chromecast') {
+      await _chromeCastLoad(url, trackTitle, trackArtist);
+    } else if (_connectedDevice?.type == 'smart_tv' || _connectedDevice?.type == 'dlna') {
+      await _dlnaSendPlay(url, trackTitle, trackArtist);
+    }
+
     _playbackState = CastPlaybackState.playing;
     notifyListeners();
     return true;
   }
 
-  /// Play/Resume remote playback
   void play() {
+    if (_connectedDevice?.type == 'chromecast') {
+      _chromeCastControl('PLAY');
+    } else if (_dlnaControlUrl != null) {
+      _dlnaControl('Play');
+    }
     _playbackState = CastPlaybackState.playing;
     notifyListeners();
   }
 
-  /// Pause remote playback
   void pause() {
+    if (_connectedDevice?.type == 'chromecast') {
+      _chromeCastControl('PAUSE');
+    } else if (_dlnaControlUrl != null) {
+      _dlnaControl('Pause');
+    }
     _playbackState = CastPlaybackState.paused;
     notifyListeners();
   }
 
-  /// Seek to duration on remote device
   void seek(Duration pos) {
     _position = pos;
+    if (_connectedDevice?.type == 'chromecast') {
+      _chromeCastSeek(pos.inSeconds.toDouble());
+    } else if (_dlnaControlUrl != null) {
+      _dlnaSeek(pos);
+    }
     notifyListeners();
   }
 
-  /// Set remote volume (0.0 to 1.0)
   void setVolume(double vol) {
     _volume = vol.clamp(0.0, 1.0);
     notifyListeners();
   }
 
-  /// Disconnect from Cast device and stop streaming
   Future<void> disconnect() async {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+
+    if (_connectedDevice?.type == 'chromecast' && _castSocket != null) {
+      _chromeCastSend('sender-0', 'receiver-0', _ccConnectNs, {'type': 'CLOSE'});
+      await Future.delayed(const Duration(milliseconds: 200));
+    } else if (_dlnaControlUrl != null) {
+      await _dlnaControl('Stop');
+    }
+
+    await _castSocketSub?.cancel();
+    _castSocketSub = null;
+    try {
+      await _castSocket?.close();
+    } catch (_) {}
+    _castSocket = null;
+
     _connectedDevice = null;
+    _dlnaControlUrl = null;
+    _castTransportId = null;
+    _castSessionId = null;
     _playbackState = CastPlaybackState.idle;
+    _receiveBuffer.clear();
+
     await stopStreamServer();
+
+    if (_onResumePhone != null) {
+      await _onResumePhone!();
+      debugPrint('CastService: resumed phone audio after disconnect');
+    }
+
     notifyListeners();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Google Cast v2 Protocol
+  //  Docs: https://developers.google.com/cast/docs/reference/messages
+  //
+  //  Transport: TLS SecureSocket on port 8009 (self-signed cert accepted)
+  //  Framing  : 4-byte big-endian length prefix + protobuf CastMessage
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static const _ccConnectNs   = 'urn:x-cast:com.google.cast.tp.connection';
+  static const _ccHeartbeatNs = 'urn:x-cast:com.google.cast.tp.heartbeat';
+  static const _ccReceiverNs  = 'urn:x-cast:com.google.cast.receiver';
+  static const _ccMediaNs     = 'urn:x-cast:com.google.cast.media';
+
+  Future<void> _openCastSocket(CastDevice device) async {
+    try {
+      _receiveBuffer.clear();
+      _requestId = 1;
+      _castTransportId = null;
+      _castSessionId = null;
+
+      _castSocket = await SecureSocket.connect(
+        device.host,
+        8009,
+        onBadCertificate: (_) => true,
+        timeout: const Duration(seconds: 6),
+      );
+
+      _castSocketSub = _castSocket!.listen(
+        _onCastData,
+        onError: (e) => debugPrint('Cast socket error: $e'),
+        onDone: () => debugPrint('Cast socket closed'),
+        cancelOnError: false,
+      );
+
+      _heartbeatTimer?.cancel();
+      _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        _chromeCastSend('sender-0', 'receiver-0', _ccHeartbeatNs, {'type': 'PING'});
+      });
+
+      _chromeCastSend('sender-0', 'receiver-0', _ccConnectNs, {
+        'type': 'CONNECT',
+        'origin': {},
+        'userAgent': 'PocketoPlay/1.0',
+      });
+
+      debugPrint('Cast: socket open to ${device.host}:8009');
+    } catch (e) {
+      debugPrint('Cast: failed to open socket: $e');
+    }
+  }
+
+  void _onCastData(List<int> data) {
+    _receiveBuffer.addAll(data);
+    _parseCastMessages();
+  }
+
+  void _parseCastMessages() {
+    while (_receiveBuffer.length >= 4) {
+      final len = (_receiveBuffer[0] << 24) |
+          (_receiveBuffer[1] << 16) |
+          (_receiveBuffer[2] << 8) |
+          _receiveBuffer[3];
+
+      if (_receiveBuffer.length < 4 + len) break;
+
+      final msgBytes = _receiveBuffer.sublist(4, 4 + len);
+      _receiveBuffer.removeRange(0, 4 + len);
+
+      try {
+        final payload = _decodeCastPayload(msgBytes);
+        if (payload == null) continue;
+
+        final json = jsonDecode(payload) as Map<String, dynamic>;
+        final type = json['type'] as String?;
+
+        if (type == 'PING') {
+          _chromeCastSend('sender-0', 'receiver-0', _ccHeartbeatNs, {'type': 'PONG'});
+        } else if (type == 'RECEIVER_STATUS') {
+          _handleReceiverStatus(json);
+        } else if (type == 'MEDIA_STATUS') {
+          _handleMediaStatus(json);
+        }
+      } catch (e) {
+        debugPrint('Cast parse error: $e');
+      }
+    }
+  }
+
+  void _handleReceiverStatus(Map<String, dynamic> json) {
+    final status = json['status'] as Map<String, dynamic>?;
+    final apps = status?['applications'] as List<dynamic>?;
+    if (apps != null && apps.isNotEmpty) {
+      final app = apps.first as Map<String, dynamic>;
+      final newTransport = app['transportId'] as String?;
+      final newSession = app['sessionId'] as String?;
+
+      if (newTransport != null && newTransport != _castTransportId) {
+        _castTransportId = newTransport;
+        _castSessionId = newSession;
+        debugPrint('Cast: app running, transportId=$_castTransportId');
+
+        _chromeCastSend('sender-0', _castTransportId!, _ccConnectNs, {
+          'type': 'CONNECT',
+          'origin': {},
+        });
+      }
+    }
+  }
+
+  void _handleMediaStatus(Map<String, dynamic> json) {
+    final statuses = json['status'] as List<dynamic>?;
+    if (statuses != null && statuses.isNotEmpty) {
+      final s = statuses.first as Map<String, dynamic>;
+      final playerState = s['playerState'] as String?;
+      if (playerState == 'PLAYING') {
+        _playbackState = CastPlaybackState.playing;
+      } else if (playerState == 'PAUSED') {
+        _playbackState = CastPlaybackState.paused;
+      } else if (playerState == 'BUFFERING') {
+        _playbackState = CastPlaybackState.buffering;
+      }
+      final currentTime = s['currentTime'];
+      if (currentTime != null) {
+        _position = Duration(milliseconds: ((currentTime as num) * 1000).round());
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> _chromeCastLoad(String url, String title, String artist) async {
+    if (_castSocket == null) {
+      if (_connectedDevice != null) {
+        await _openCastSocket(_connectedDevice!);
+        await Future.delayed(const Duration(seconds: 1));
+      }
+      if (_castSocket == null) {
+        debugPrint('Cast: no socket, cannot LOAD');
+        return;
+      }
+    }
+
+    // Launch the Default Media Receiver (appId CC1AD845)
+    _chromeCastSend('sender-0', 'receiver-0', _ccReceiverNs, {
+      'type': 'LAUNCH',
+      'appId': 'CC1AD845',
+      'requestId': _requestId++,
+    });
+
+    debugPrint('Cast: waiting for Default Media Receiver to launch...');
+    for (int i = 0; i < 50; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (_castTransportId != null) break;
+    }
+
+    if (_castTransportId == null) {
+      debugPrint('Cast: timeout waiting for media receiver');
+      return;
+    }
+
+    _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
+      'type': 'LOAD',
+      'requestId': _requestId++,
+      'sessionId': _castSessionId,
+      'media': {
+        'contentId': url,
+        'contentType': 'audio/mpeg',
+        'streamType': 'BUFFERED',
+        'metadata': {
+          'metadataType': 3,
+          'title': title,
+          'artist': artist,
+          'albumName': '',
+          'images': [],
+        },
+      },
+      'autoplay': true,
+      'currentTime': 0,
+      'customData': {},
+    });
+
+    debugPrint('Cast: LOAD sent to $_castTransportId -> $url');
+  }
+
+  void _chromeCastControl(String type) {
+    if (_castTransportId == null || _castSocket == null) return;
+    _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
+      'type': type,
+      'requestId': _requestId++,
+      'mediaSessionId': 1,
+    });
+  }
+
+  void _chromeCastSeek(double seconds) {
+    if (_castTransportId == null || _castSocket == null) return;
+    _chromeCastSend('sender-0', _castTransportId!, _ccMediaNs, {
+      'type': 'SEEK',
+      'requestId': _requestId++,
+      'mediaSessionId': 1,
+      'currentTime': seconds,
+      'resumeState': 'PLAYBACK_START',
+    });
+  }
+
+  void _chromeCastSend(
+    String sourceId,
+    String destinationId,
+    String namespace,
+    Map<String, dynamic> payload,
+  ) {
+    if (_castSocket == null) return;
+    try {
+      final bytes = _encodeCastMessage(
+        sourceId: sourceId,
+        destinationId: destinationId,
+        namespace: namespace,
+        payload: jsonEncode(payload),
+      );
+      _castSocket!.add(bytes);
+    } catch (e) {
+      debugPrint('Cast send error: $e');
+    }
+  }
+
+  // ── Protobuf CastMessage encoding/decoding ───────────────────────────────
+  //
+  //  Fields: 1=protocol_version(varint=0), 2=source_id, 3=destination_id,
+  //          4=namespace, 5=payload_type(varint=0), 6=payload_utf8
+
+  Uint8List _encodeCastMessage({
+    required String sourceId,
+    required String destinationId,
+    required String namespace,
+    required String payload,
+  }) {
+    final List<int> msg = [];
+    msg.addAll([0x08, 0x00]); // field 1: protocol_version = 0
+    _pbWriteString(msg, 2, sourceId);
+    _pbWriteString(msg, 3, destinationId);
+    _pbWriteString(msg, 4, namespace);
+    msg.addAll([0x28, 0x00]); // field 5: payload_type = 0 (STRING)
+    _pbWriteString(msg, 6, payload);
+
+    final len = msg.length;
+    return Uint8List.fromList([
+      (len >> 24) & 0xff,
+      (len >> 16) & 0xff,
+      (len >> 8) & 0xff,
+      len & 0xff,
+      ...msg,
+    ]);
+  }
+
+  void _pbWriteString(List<int> buf, int field, String value) {
+    final bytes = utf8.encode(value);
+    buf.add((field << 3) | 2); // wire type 2
+    buf.addAll(_pbVarint(bytes.length));
+    buf.addAll(bytes);
+  }
+
+  List<int> _pbVarint(int value) {
+    final r = <int>[];
+    while (value > 0x7f) {
+      r.add((value & 0x7f) | 0x80);
+      value >>= 7;
+    }
+    r.add(value & 0x7f);
+    return r;
+  }
+
+  String? _decodeCastPayload(List<int> bytes) {
+    int i = 0;
+    while (i < bytes.length) {
+      final tagByte = bytes[i++];
+      final wireType = tagByte & 0x07;
+      final fieldNum = tagByte >> 3;
+
+      if (wireType == 0) {
+        while (i < bytes.length && (bytes[i] & 0x80) != 0) {
+          i++;
+        }
+        i++;
+      } else if (wireType == 2) {
+        int len = 0, shift = 0;
+        while (i < bytes.length) {
+          final b = bytes[i++];
+          len |= (b & 0x7f) << shift;
+          shift += 7;
+          if ((b & 0x80) == 0) break;
+        }
+        if (fieldNum == 6) {
+          return utf8.decode(bytes.sublist(i, i + len), allowMalformed: true);
+        }
+        i += len;
+      } else {
+        break;
+      }
+    }
+    return null;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  DLNA / UPnP helpers
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Future<String?> _resolveDlnaControlUrl(CastDevice device) async {
+    const descPaths = ['/MediaRenderer/desc.xml', '/description.xml', '/device-desc.xml', '/upnp/IGD.xml'];
+    const probePorts = [1400, 49152, 49153, 8080, 8060];
+    for (final port in probePorts) {
+      for (final path in descPaths) {
+        try {
+          final resp = await http
+              .get(Uri.parse('http://${device.host}:$port$path'))
+              .timeout(const Duration(seconds: 2));
+          if (resp.statusCode == 200 && resp.body.contains('AVTransport')) {
+            final body = resp.body;
+            final avIdx = body.indexOf('AVTransport');
+            if (avIdx == -1) continue;
+            final ctrlStart = body.indexOf('<controlURL>', avIdx) + '<controlURL>'.length;
+            final ctrlEnd = body.indexOf('</controlURL>', ctrlStart);
+            if (ctrlStart > 0 && ctrlEnd > ctrlStart) {
+              String relUrl = body.substring(ctrlStart, ctrlEnd);
+              if (!relUrl.startsWith('http')) relUrl = 'http://${device.host}:$port$relUrl';
+              return relUrl;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    return null;
+  }
+
+  Future<void> _dlnaSendPlay(String url, String title, String artist) async {
+    if (_dlnaControlUrl == null) return;
+    try {
+      final body = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+  <s:Body>
+    <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+      <InstanceID>0</InstanceID>
+      <CurrentURI>$url</CurrentURI>
+      <CurrentURIMetaData>&lt;DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"&gt;&lt;item id="1" parentID="0" restricted="0"&gt;&lt;dc:title&gt;$title&lt;/dc:title&gt;&lt;dc:creator&gt;$artist&lt;/dc:creator&gt;&lt;upnp:class&gt;object.item.audioItem.musicTrack&lt;/upnp:class&gt;&lt;res&gt;$url&lt;/res&gt;&lt;/item&gt;&lt;/DIDL-Lite&gt;</CurrentURIMetaData>
+    </u:SetAVTransportURI>
+  </s:Body>
+</s:Envelope>''';
+      await http.post(Uri.parse(_dlnaControlUrl!),
+          headers: {'Content-Type': 'text/xml; charset="utf-8"', 'SOAPACTION': '"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI"'},
+          body: body).timeout(const Duration(seconds: 5));
+      await _dlnaControl('Play');
+    } catch (e) {
+      debugPrint('DLNA sendPlay error: $e');
+    }
+  }
+
+  Future<void> _dlnaControl(String action) async {
+    if (_dlnaControlUrl == null) return;
+    final speed = action == 'Play' ? '<Speed>1</Speed>' : '';
+    final body = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+  <s:Body>
+    <u:$action xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID>$speed</u:$action>
+  </s:Body>
+</s:Envelope>''';
+    try {
+      await http.post(Uri.parse(_dlnaControlUrl!),
+          headers: {'Content-Type': 'text/xml; charset="utf-8"', 'SOAPACTION': '"urn:schemas-upnp-org:service:AVTransport:1#$action"'},
+          body: body).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('DLNA $action error: $e');
+    }
+  }
+
+  Future<void> _dlnaSeek(Duration pos) async {
+    if (_dlnaControlUrl == null) return;
+    final h = pos.inHours.toString().padLeft(2, '0');
+    final m = (pos.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (pos.inSeconds % 60).toString().padLeft(2, '0');
+    final body = '''<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+  <s:Body>
+    <u:Seek xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Unit>REL_TIME</Unit><Target>$h:$m:$s</Target></u:Seek>
+  </s:Body>
+</s:Envelope>''';
+    try {
+      await http.post(Uri.parse(_dlnaControlUrl!),
+          headers: {'Content-Type': 'text/xml; charset="utf-8"', 'SOAPACTION': '"urn:schemas-upnp-org:service:AVTransport:1#Seek"'},
+          body: body).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('DLNA Seek error: $e');
+    }
   }
 }
