@@ -694,8 +694,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 icon: Icons.apps_rounded,
                 title: "App Version",
-                subtitle: "Pocketo Play (Build 1.0.0+1)",
-                trailingText: "v1.0.0",
+                subtitle: "Pocketo Play (Build 1.0.4+6)",
+                trailingText: "v1.0.4",
                 onTap: null,
               ),
               Divider(color: borderCol, height: 12),
@@ -709,7 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   showLicensePage(
                     context: context,
                     applicationName: 'Pocketo Play',
-                    applicationVersion: '1.0.0',
+                    applicationVersion: '1.0.4',
                     applicationIcon: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: ClipRRect(
