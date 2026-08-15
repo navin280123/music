@@ -10,6 +10,7 @@ import 'package:music/CastService.dart';
 import 'package:music/CastSheet.dart';
 import 'package:music/ColorPaletteService.dart';
 import 'package:music/HomeScreen.dart';
+import 'package:music/JamSyncService.dart';
 import 'package:music/LibraryScreen.dart';
 import 'package:music/MediaCacheService.dart';
 import 'package:music/PlayScreen.dart';
@@ -104,7 +105,7 @@ class _MainScreenState extends State<MainScreen> {
       _lastVoiceMessageSetting = currentSetting;
       final updatedPaths = MediaCacheService.instance
           .getFilePaths(includeVoiceMessages: currentSetting);
-      if (updatedPaths.isNotEmpty) {
+      if (mounted) {
         setState(() {
           _currentAudioFiles = updatedPaths;
         });
@@ -162,6 +163,9 @@ class _MainScreenState extends State<MainScreen> {
           _position = position;
         });
       }
+      if (JamSyncService.instance.isHost) {
+        JamSyncService.instance.updateHostLivePosition(position, audioPlayer.playing);
+      }
     });
 
     audioPlayer.playerStateStream.listen((playerState) {
@@ -169,6 +173,13 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _isPlaying = playerState.playing;
         });
+      }
+
+      if (JamSyncService.instance.isHost) {
+        JamSyncService.instance.onHostPlaybackStateChanged(
+          playerState.playing,
+          _position,
+        );
       }
 
       if (playerState.processingState == ProcessingState.completed &&
@@ -223,6 +234,17 @@ class _MainScreenState extends State<MainScreen> {
 
       PlaylistManager.instance.recordSongPlay(filePath);
       _refreshMiniPalette(filePath);
+
+      if (JamSyncService.instance.isHost) {
+        JamSyncService.instance.onHostTrackChanged(
+          filePath: filePath,
+          title: metadata['title'] ?? 'Unknown Title',
+          artist: metadata['artist'] ?? 'Unknown Artist',
+          duration: _duration,
+          initialPosition: Duration.zero,
+          isPlaying: true,
+        );
+      }
 
       if (CastService.instance.isConnected) {
         await audioPlayer.pause();

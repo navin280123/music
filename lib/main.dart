@@ -237,19 +237,21 @@ Future<List<FileSystemEntity>> scanAudioFilesOnDevice({
   Set<String> scannedPaths = {};
 
   List<String> directoriesToSearch = [
-    '/storage/emulated/0',
     '/storage/emulated/0/Music',
     '/storage/emulated/0/Download',
     '/storage/emulated/0/Downloads',
-    '/storage/emulated/0/DCIM',
     '/storage/emulated/0/Audio',
     '/storage/emulated/0/Documents',
     '/storage/emulated/0/WhatsApp/Media',
+    '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media',
     '/storage/emulated/0/Telegram',
     '/storage/emulated/0/Bluetooth',
-    '/storage/sdcard1',
+    '/storage/emulated/0/Recordings',
+    '/storage/emulated/0/Sounds',
+    '/storage/emulated/0/Voice Recorder',
     '/storage/sdcard1/Music',
     '/storage/sdcard1/Download',
+    '/storage/sdcard1/Audio',
   ];
 
   try {
@@ -261,10 +263,23 @@ Future<List<FileSystemEntity>> scanAudioFilesOnDevice({
     debugPrint("Error retrieving external storage directory: $e");
   }
 
+  // Scan top-level files in root storage safely without deep non-music tree recursion
+  try {
+    final rootDir = Directory('/storage/emulated/0');
+    if (await rootDir.exists()) {
+      await for (final entity
+          in rootDir.list(recursive: false).handleError((_) {})) {
+        if (entity is File && _isAudioFile(entity.path)) {
+          allFiles.add(entity);
+        }
+      }
+    }
+  } catch (_) {}
+
   for (final path in directoriesToSearch) {
     Directory dir = Directory(path);
-    if (dir.existsSync() && !scannedPaths.contains(dir.path)) {
-      _safeScanDirectory(dir, allFiles, scannedPaths);
+    if (await dir.exists() && !scannedPaths.contains(dir.path)) {
+      await _safeScanDirectory(dir, allFiles, scannedPaths);
     }
   }
 
@@ -285,36 +300,48 @@ Future<List<FileSystemEntity>> scanAudioFilesOnDevice({
   }
 }
 
-void _safeScanDirectory(
+bool _isAudioFile(String path) {
+  final lowerPath = path.toLowerCase();
+  return lowerPath.endsWith('.mp3') ||
+      lowerPath.endsWith('.m4a') ||
+      lowerPath.endsWith('.aac') ||
+      lowerPath.endsWith('.wav') ||
+      lowerPath.endsWith('.flac') ||
+      lowerPath.endsWith('.ogg') ||
+      lowerPath.endsWith('.opus');
+}
+
+Future<void> _safeScanDirectory(
   Directory dir,
   List<FileSystemEntity> results,
   Set<String> visitedDirs, {
   int depth = 0,
-}) {
-  if (depth > 6) return;
+}) async {
+  if (depth > 5) return;
   if (!visitedDirs.add(dir.path)) return;
 
   try {
-    final List<FileSystemEntity> entities = dir.listSync(recursive: false);
-    for (final entity in entities) {
+    await for (final entity
+        in dir.list(recursive: false).handleError((_) {})) {
       final path = entity.path;
       final name = path.split(Platform.pathSeparator).last;
       if (name.startsWith('.')) continue;
 
       if (entity is File) {
-        final lowerPath = path.toLowerCase();
-        if (lowerPath.endsWith('.mp3') ||
-            lowerPath.endsWith('.m4a') ||
-            lowerPath.endsWith('.aac') ||
-            lowerPath.endsWith('.wav') ||
-            lowerPath.endsWith('.flac') ||
-            lowerPath.endsWith('.ogg') ||
-            lowerPath.endsWith('.opus')) {
+        if (_isAudioFile(path)) {
           results.add(entity);
         }
       } else if (entity is Directory) {
-        if (!path.endsWith('/Android/data') && !path.endsWith('/Android/obb')) {
-          _safeScanDirectory(entity, results, visitedDirs, depth: depth + 1);
+        final lower = path.toLowerCase();
+        // Skip heavy directories that do not contain audio files
+        if (!lower.contains('/android/data') &&
+            !lower.contains('/android/obb') &&
+            !lower.contains('/dcim/camera') &&
+            !lower.contains('/pictures') &&
+            !lower.contains('/.cache') &&
+            !lower.contains('/.thumbnails')) {
+          await _safeScanDirectory(entity, results, visitedDirs,
+              depth: depth + 1);
         }
       }
     }

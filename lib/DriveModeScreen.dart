@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +9,6 @@ import 'package:music/PlaylistManager.dart';
 class DriveModeScreen extends StatefulWidget {
   final List<dynamic> audioFiles;
   final AudioPlayer audioPlayer;
-  final int? currentlyPlayingIndex;
-  final bool isPlaying;
   final Function() onPlay;
   final Function() onPause;
   final Function() onNext;
@@ -19,8 +18,6 @@ class DriveModeScreen extends StatefulWidget {
     super.key,
     required this.audioFiles,
     required this.audioPlayer,
-    required this.currentlyPlayingIndex,
-    required this.isPlaying,
     required this.onPlay,
     required this.onPause,
     required this.onNext,
@@ -32,31 +29,69 @@ class DriveModeScreen extends StatefulWidget {
 }
 
 class _DriveModeScreenState extends State<DriveModeScreen> {
+  // Live state derived from AudioPlayer streams
+  bool _isPlaying = false;
+  int? _currentIndex;
+
+  late final StreamSubscription<PlayerState> _playerStateSub;
+  late final StreamSubscription<int?> _currentIndexSub;
+
   @override
   void initState() {
     super.initState();
+
     // Keep device screen awake during Drive Mode
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    // Seed initial values immediately (don't wait for first stream event)
+    _isPlaying = widget.audioPlayer.playing;
+    _currentIndex = widget.audioPlayer.currentIndex;
+
+    // Listen for live playback state changes
+    _playerStateSub = widget.audioPlayer.playerStateStream.listen((state) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = state.playing;
+        });
+      }
+    });
+
+    // Listen for live track changes
+    _currentIndexSub = widget.audioPlayer.currentIndexStream.listen((index) {
+      if (mounted) {
+        setState(() {
+          _currentIndex = index;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _playerStateSub.cancel();
+    _currentIndexSub.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentPath = widget.currentlyPlayingIndex != null &&
-            widget.currentlyPlayingIndex! < widget.audioFiles.length
-        ? widget.audioFiles[widget.currentlyPlayingIndex!].path
+    final currentPath = _currentIndex != null &&
+            _currentIndex! < widget.audioFiles.length
+        ? widget.audioFiles[_currentIndex!].path as String
         : null;
 
     final songName = currentPath != null
         ? currentPath.split(Platform.pathSeparator).last
-        : "No Track Playing";
+        : 'No Track Playing';
 
-    final isFav = currentPath != null && PlaylistManager.instance.isFavorite(currentPath);
+    // Strip common audio extensions for cleaner display
+    final displayName = songName.replaceAll(
+        RegExp(r'\.(mp3|flac|aac|m4a|wav|ogg|opus)$', caseSensitive: false),
+        '');
+
+    final isFav = currentPath != null &&
+        PlaylistManager.instance.isFavorite(currentPath);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -65,11 +100,11 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
         onHorizontalDragEnd: (details) {
           if (details.primaryVelocity != null) {
             if (details.primaryVelocity! < -300) {
-              // Swipe Left -> Next
+              // Swipe Left → Next
               HapticFeedback.mediumImpact();
               widget.onNext();
             } else if (details.primaryVelocity! > 300) {
-              // Swipe Right -> Previous
+              // Swipe Right → Previous
               HapticFeedback.mediumImpact();
               widget.onPrevious();
             }
@@ -77,15 +112,17 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
         },
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               children: [
-                // Top Exit & Car Mode Badge
+                // ── Top: Drive Mode badge + Exit button ──────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E293B),
                         borderRadius: BorderRadius.circular(20),
@@ -93,10 +130,11 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.directions_car_rounded, color: Color(0xFF38BDF8), size: 18),
+                          Icon(Icons.directions_car_rounded,
+                              color: Color(0xFF38BDF8), size: 18),
                           SizedBox(width: 8),
                           Text(
-                            "DRIVE MODE",
+                            'DRIVE MODE',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -108,19 +146,20 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 32),
                       onPressed: () => Navigator.pop(context),
-                      tooltip: "Exit Drive Mode",
+                      tooltip: 'Exit Drive Mode',
                     ),
                   ],
                 ),
                 const Spacer(),
 
-                // Center Album Art & Gestures
+                // ── Centre: Album Art (tap to play/pause) ────────────────
                 GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    if (widget.isPlaying) {
+                    if (_isPlaying) {
                       widget.onPause();
                     } else {
                       widget.onPlay();
@@ -136,7 +175,8 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                              color: const Color(0xFF38BDF8)
+                                  .withValues(alpha: 0.2),
                               blurRadius: 30,
                               spreadRadius: 2,
                             ),
@@ -161,6 +201,7 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                                 ),
                               ),
                       ),
+                      // Play/Pause overlay icon on artwork
                       Container(
                         width: 72,
                         height: 72,
@@ -169,7 +210,9 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          _isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           size: 48,
                           color: Colors.white,
                         ),
@@ -179,9 +222,9 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // Large Track Title
+                // ── Track Title ──────────────────────────────────────────
                 Text(
-                  songName,
+                  displayName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -193,44 +236,49 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "Swipe Left/Right to Skip • Tap Center to Pause",
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 13,
-                  ),
+                  'Swipe Left/Right to Skip  •  Tap to Play/Pause',
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
                 ),
                 const Spacer(),
 
-                // Huge Oversized Controls
+                // ── Controls Row ─────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Favorite Toggle
+                    // Favourite Toggle
                     if (currentPath != null)
                       IconButton(
                         iconSize: 36,
                         icon: Icon(
-                          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          color: isFav ? const Color(0xFFF43F5E) : Colors.white70,
+                          isFav
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isFav
+                              ? const Color(0xFFF43F5E)
+                              : Colors.white70,
                         ),
                         onPressed: () {
                           HapticFeedback.lightImpact();
                           PlaylistManager.instance.toggleFavorite(currentPath);
                           setState(() {});
                         },
-                      ),
+                      )
+                    else
+                      // Placeholder keeps layout balanced when no track
+                      const SizedBox(width: 36),
 
-                    // Previous Button
+                    // Previous
                     IconButton(
                       iconSize: 54,
-                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white),
+                      icon: const Icon(Icons.skip_previous_rounded,
+                          color: Colors.white),
                       onPressed: () {
                         HapticFeedback.mediumImpact();
                         widget.onPrevious();
                       },
                     ),
 
-                    // Big Play/Pause Button
+                    // Big Play/Pause
                     Container(
                       width: 76,
                       height: 76,
@@ -241,12 +289,14 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                       child: IconButton(
                         iconSize: 44,
                         icon: Icon(
-                          widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          _isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           color: Colors.black,
                         ),
                         onPressed: () {
                           HapticFeedback.mediumImpact();
-                          if (widget.isPlaying) {
+                          if (_isPlaying) {
                             widget.onPause();
                           } else {
                             widget.onPlay();
@@ -255,17 +305,18 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                       ),
                     ),
 
-                    // Next Button
+                    // Next
                     IconButton(
                       iconSize: 54,
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white),
+                      icon: const Icon(Icons.skip_next_rounded,
+                          color: Colors.white),
                       onPressed: () {
                         HapticFeedback.mediumImpact();
                         widget.onNext();
                       },
                     ),
 
-                    // Voice / Quick Mute
+                    // Mute / Unmute
                     IconButton(
                       iconSize: 36,
                       icon: Icon(

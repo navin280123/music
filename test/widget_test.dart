@@ -6,6 +6,7 @@ import 'package:music/AppTheme.dart';
 import 'package:music/LyricsService.dart';
 import 'package:music/MediaCacheService.dart';
 import 'package:music/PlaylistManager.dart';
+import 'package:music/SleepTimerService.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -204,4 +205,11 @@ void main() {
     final allPaths = cache.getFilePaths(includeVoiceMessages: true);
     expect(allPaths.length, 3);
   });
+
+  test('SleepTimerService manages timer state and formats correctly', () {
+    final timer = SleepTimerService.instance;
+    expect(timer.isActive, false);
+    expect(timer.formattedRemainingTime, 'Off');
+  });
 }
+
