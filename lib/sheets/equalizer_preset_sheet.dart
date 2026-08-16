@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/AppTheme.dart';
+import 'package:music/core/app_theme.dart';
 
 class EqualizerPresetSheet extends StatefulWidget {
   final AudioPlayer audioPlayer;

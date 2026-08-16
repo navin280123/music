@@ -1,16 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/AppSettings.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/ArtworkHelper.dart';
-import 'package:music/CastService.dart';
-import 'package:music/CastSheet.dart';
-import 'package:music/EqualizerPresetSheet.dart';
-import 'package:music/MediaCacheService.dart';
-import 'package:music/ProfileScreen.dart';
-import 'package:music/SleepTimerService.dart';
-import 'package:music/SleepTimerSheet.dart';
+import 'package:music/core/app_settings.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/helpers/artwork_helper.dart';
+import 'package:music/services/cast_service.dart';
+import 'package:music/sheets/cast_sheet.dart';
+import 'package:music/sheets/equalizer_preset_sheet.dart';
+import 'package:music/services/media_cache_service.dart';
+import 'package:music/screens/profile_screen.dart';
+import 'package:music/services/sleep_timer_service.dart';
+import 'package:music/sheets/sleep_timer_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   final List<dynamic> audioFiles;

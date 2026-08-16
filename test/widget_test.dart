@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:music/ABLooperWidget.dart';
-import 'package:music/AppSettings.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/LyricsService.dart';
-import 'package:music/MediaCacheService.dart';
-import 'package:music/PlaylistManager.dart';
-import 'package:music/SleepTimerService.dart';
+import 'package:music/widgets/ab_looper_widget.dart';
+import 'package:music/core/app_settings.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/services/lyrics_service.dart';
+import 'package:music/services/media_cache_service.dart';
+import 'package:music/services/playlist_manager.dart';
+import 'package:music/services/sleep_timer_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

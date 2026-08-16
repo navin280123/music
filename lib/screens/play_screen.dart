@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/ABLooperWidget.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/ArtworkHelper.dart';
-import 'package:music/CastService.dart';
-import 'package:music/ColorPaletteService.dart';
-import 'package:music/DriveModeScreen.dart';
-import 'package:music/EqualizerPresetSheet.dart';
-import 'package:music/LyricsViewerSheet.dart';
-import 'package:music/PlaylistManager.dart';
-import 'package:music/ShareCardWidget.dart';
-import 'package:music/JamScreen.dart';
-import 'package:music/JamSyncService.dart';
-import 'package:music/SleepTimerService.dart';
-import 'package:music/SleepTimerSheet.dart';
-import 'package:music/TagEditorSheet.dart';
+import 'package:music/widgets/ab_looper_widget.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/helpers/artwork_helper.dart';
+import 'package:music/services/cast_service.dart';
+import 'package:music/services/color_palette_service.dart';
+import 'package:music/screens/drive_mode_screen.dart';
+import 'package:music/sheets/equalizer_preset_sheet.dart';
+import 'package:music/sheets/lyrics_viewer_sheet.dart';
+import 'package:music/services/playlist_manager.dart';
+import 'package:music/widgets/share_card_widget.dart';
+import 'package:music/screens/jam_screen.dart';
+import 'package:music/services/jam_sync_service.dart';
+import 'package:music/services/sleep_timer_service.dart';
+import 'package:music/sheets/sleep_timer_sheet.dart';
+import 'package:music/sheets/tag_editor_sheet.dart';
 
 class PlayScreen extends StatefulWidget {
   final List<dynamic> audioFiles;

@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
-import 'package:music/AppTheme.dart';
-import 'package:music/ArtworkHelper.dart';
-import 'package:music/ColorPaletteService.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/helpers/artwork_helper.dart';
+import 'package:music/services/color_palette_service.dart';
 
 /// A widget that renders a branded "Now Playing" share card and handles sharing.
 class ShareCardWidget extends StatefulWidget {

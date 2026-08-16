@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/LyricsService.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/services/lyrics_service.dart';
 
 class LyricsViewerSheet extends StatefulWidget {
   final String filePath;

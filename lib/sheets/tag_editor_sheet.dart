@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:audiotags/audiotags.dart';
 import 'package:flutter/material.dart';
-import 'package:music/AppTheme.dart';
+import 'package:music/core/app_theme.dart';
 
 class TagEditorSheet extends StatefulWidget {
   final String filePath;

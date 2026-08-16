@@ -3,7 +3,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:music/JamSyncService.dart';
+import 'package:music/services/jam_sync_service.dart';
 
 class JamScreen extends StatefulWidget {
   final AudioPlayer audioPlayer;

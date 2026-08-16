@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/CastService.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/services/cast_service.dart';
 
 class CastSheet extends StatefulWidget {
   final String? currentTrackPath;

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/AppTheme.dart';
+import 'package:music/core/app_theme.dart';
 
 class ABLooperService extends ChangeNotifier {
   static final ABLooperService _instance = ABLooperService._internal();

@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/ArtworkHelper.dart';
-import 'package:music/PlaylistManager.dart';
+import 'package:music/helpers/artwork_helper.dart';
+import 'package:music/services/playlist_manager.dart';
 
 class DriveModeScreen extends StatefulWidget {
   final List<dynamic> audioFiles;

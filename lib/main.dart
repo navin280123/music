@@ -3,11 +3,11 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:lottie/lottie.dart';
 import 'dart:async';
 import 'dart:io';
-import 'package:music/AppSettings.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/CastService.dart';
-import 'package:music/MainScreen.dart';
-import 'package:music/MediaCacheService.dart';
+import 'package:music/core/app_settings.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/services/cast_service.dart';
+import 'package:music/screens/main_screen.dart';
+import 'package:music/services/media_cache_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 

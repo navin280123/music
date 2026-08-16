@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:music/AppTheme.dart';
-import 'package:music/SleepTimerService.dart';
+import 'package:music/core/app_theme.dart';
+import 'package:music/services/sleep_timer_service.dart';
 
 class SleepTimerSheet {
   static void show(

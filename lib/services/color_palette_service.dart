@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
-import 'ArtworkHelper.dart';
+import 'package:music/helpers/artwork_helper.dart';
 
 /// Extracts and caches dominant color palettes from track album artwork.
 class ColorPaletteService {
